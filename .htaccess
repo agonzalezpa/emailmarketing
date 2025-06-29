@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api\.php/(.*)$ api.php?endpoint=$1 [QSA,L]
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Regla para capturar /campaign_id/contact_id
+    RewriteRule ^track/open/(\d+)/(\d+)$ /track_open.php?campaign_id=$1&contact_id=$2 [L]
+    RewriteRule ^track/click/(\d+)/(\d+)$ /track_click.php?campaign_id=$1&contact_id=$2 [L]
+</IfModule>
+

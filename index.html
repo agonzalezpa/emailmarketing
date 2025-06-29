@@ -1,0 +1,628 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmailPro - Marketing Suite</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📧</text></svg>">
+    
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-envelope-open-text"></i>
+                <span>EmailPro</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-section="senders">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Remitentes</span>
+                </li>
+                <li class="nav-item" data-section="contacts">
+                    <i class="fas fa-address-book"></i>
+                    <span>Contactos</span>
+                </li>
+                <li class="nav-item" data-section="campaigns">
+                    <i class="fas fa-rocket"></i>
+                    <span>Campañas</span>
+                </li>
+                <li class="nav-item" data-section="templates">
+                    <i class="fas fa-palette"></i>
+                    <span>Plantillas</span>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="new-campaign-btn">
+                        <i class="fas fa-plus"></i>
+                        Nueva Campaña
+                    </button>
+                </div>
+            </header>
+
+            <section id="dashboard-section" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="campaigns-count">0</h3>
+                            <p>Campañas Enviadas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="contacts-count">0</h3>
+                            <p>Contactos Totales</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="open-rate">0%</h3>
+                            <p>Tasa de Apertura</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="click-rate">0%</h3>
+                            <p>Tasa de Clicks</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>Campañas Recientes</h3>
+                        <div id="recent-campaigns">
+                            <p class="empty-state">No hay campañas recientes</p>
+                        </div>
+                    </div>
+                    </div>
+            </section>
+
+            <section id="senders-section" class="content-section">
+                <div class="section-header">
+                    <h2>Configurar Remitentes</h2>
+                    <button class="btn btn-primary" id="add-sender-btn">
+                        <i class="fas fa-plus"></i>
+                        Agregar Remitente
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <div class="senders-list" id="senders-list">
+                        <div class="empty-state">
+                            <i class="fas fa-user-plus"></i>
+                            <p>No hay remitentes configurados</p>
+                            <button class="btn btn-outline" id="add-first-sender">Agregar Primer Remitente</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="contacts-section" class="content-section">
+                <div class="section-header">
+                    <h2>Gestión de Contactos</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-outline" id="import-contacts-btn">
+                            <i class="fas fa-upload"></i>
+                            Importar CSV
+                        </button>
+                        <button class="btn btn-primary" id="add-contact-btn">
+                            <i class="fas fa-plus"></i>
+                            Agregar Contacto
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="search-bar">
+                        <div class="search-input-container">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="search-contacts" placeholder="Buscar contactos...">
+                        </div>
+                        <div class="filter-controls">
+                            <select id="filter-status">
+                                <option value="">Todos los estados</option>
+                                <option value="active">Activos</option>
+                                <option value="inactive">Inactivos</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="contacts-table-container">
+                        <table class="contacts-table" id="contacts-table">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all-contacts"></th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Agregado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contacts-tbody">
+                                <tr class="empty-row">
+                                    <td colspan="6" class="empty-state">
+                                        <i class="fas fa-address-book"></i>
+                                        <p>No hay contactos registrados</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="campaigns-section" class="content-section">
+                <div class="section-header">
+                    <h2>Campañas de Email</h2>
+                    <button class="btn btn-primary" id="create-campaign-btn">
+                        <i class="fas fa-plus"></i>
+                        Crear Campaña
+                    </button>
+                </div>
+                
+                <div class="campaigns-grid" id="campaigns-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-rocket"></i>
+                        <p>No hay campañas creadas</p>
+                        <button class="btn btn-outline">Crear Primera Campaña</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="templates-section" class="content-section">
+                <div class="section-header">
+                    <h2>Plantillas de Email</h2>
+                    <button class="btn btn-primary" id="create-template-btn">
+                        <i class="fas fa-plus"></i>
+                        Crear Plantilla
+                    </button>
+                </div>
+                
+                <div class="templates-grid" id="templates-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-palette"></i>
+                        <p>No hay plantillas disponibles</p>
+                        <button class="btn btn-outline">Crear Primera Plantilla</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="modal" id="sender-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Configurar Remitente</h3>
+                <button class="modal-close" data-modal="sender-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="sender-form" class="modal-body">
+                <div class="form-group">
+                    <label for="sender-name">Nombre del Remitente</label>
+                    <input type="text" id="sender-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="sender-email">Email del Remitente</label>
+                    <input type="email" id="sender-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="smtp-host">Servidor SMTP</label>
+                    <input type="text" id="smtp-host" name="smtp_host" placeholder="smtp.gmail.com">
+                </div>
+                <div class="form-group">
+                    <label for="smtp-port">Puerto SMTP</label>
+                    <input type="number" id="smtp-port" name="smtp_port" placeholder="587" value="587">
+                </div>
+                <div class="form-group">
+                    <label for="smtp-username">Usuario SMTP</label>
+                    <input type="text" id="smtp-username" name="smtp_username">
+                </div>
+                <div class="form-group">
+                    <label for="smtp-password">Contraseña SMTP</label>
+                    <input type="password" id="smtp-password" name="smtp_password">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-modal="sender-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Remitente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="contact-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Agregar Contacto</h3>
+                <button class="modal-close" data-modal="contact-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="contact-form" class="modal-body">
+                <div class="form-group">
+                    <label for="contact-name">Nombre Completo</label>
+                    <input type="text" id="contact-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="contact-email">Email</label>
+                    <input type="email" id="contact-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="contact-status">Estado</label>
+                    <select id="contact-status" name="status">
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-modal="contact-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Agregar Contacto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal large" id="campaign-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crear Campaña</h3>
+                <button class="modal-close" data-modal="campaign-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="campaign-form" class="modal-body">
+                <div class="campaign-steps">
+                    <div class="step active" data-step="1">
+                        <span class="step-number">1</span>
+                        <span class="step-title">Configuración</span>
+                    </div>
+                    <div class="step" data-step="2">
+                        <span class="step-number">2</span>
+                        <span class="step-title">Contenido</span>
+                    </div>
+                    <div class="step" data-step="3">
+                        <span class="step-number">3</span>
+                        <span class="step-title">Revisión</span>
+                    </div>
+                </div>
+
+                <div class="step-content active" id="step-1">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="campaign-name">Nombre de la Campaña</label>
+                            <input type="text" id="campaign-name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="campaign-sender">Remitente</label>
+                            <select id="campaign-sender" name="sender_id" required>
+                                <option value="">Seleccionar remitente...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-subject">Asunto del Email</label>
+                        <input type="text" id="campaign-subject" name="subject" required>
+                    </div>
+                </div>
+
+                <div class="step-content" id="step-2">
+                    <div class="email-editor">
+                        <div class="editor-toolbar">
+                            <button type="button" class="toolbar-btn" data-command="bold">
+                                <i class="fas fa-bold"></i>
+                            </button>
+                            <button type="button" class="toolbar-btn" data-command="italic">
+                                <i class="fas fa-italic"></i>
+                            </button>
+                            <button type="button" class="toolbar-btn" data-command="underline">
+                                <i class="fas fa-underline"></i>
+                            </button>
+                            <div class="toolbar-separator"></div>
+                            <button type="button" class="toolbar-btn" data-command="insertUnorderedList">
+                                <i class="fas fa-list-ul"></i>
+                            </button>
+                            <button type="button" class="toolbar-btn" data-command="insertOrderedList">
+                                <i class="fas fa-list-ol"></i>
+                            </button>
+                            <div class="toolbar-separator"></div>
+                            <button type="button" class="toolbar-btn" data-command="createLink">
+                                <i class="fas fa-link"></i>
+                            </button>
+                            <button type="button" class="toolbar-btn" data-command="insertImage">
+                                <i class="fas fa-image"></i>
+                            </button>
+                        </div>
+                        <div class="editor-content" id="email-editor" contenteditable="true">
+                            
+                        </div>
+                        
+                    </div>
+                    <div class="editor-actions">
+                       <button type="button" class="btn btn-outline" id="btn-conevrtirhtml">
+                            <i class="fas fa-paper-plane"></i>
+                           Convertir a HTML
+                        </button>
+                        <button type="button" class="btn btn-outline" id="test-email">
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar Prueba
+                        </button>
+                        
+                    </div>
+                </div>
+
+                <div class="step-content" id="step-3">
+                    <div class="campaign-summary">
+                        <h4>Resumen de la Campaña</h4>
+                        <div class="summary-item">
+                            <strong>Nombre:</strong> <span id="summary-name">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Remitente:</strong> <span id="summary-sender">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Asunto:</strong> <span id="summary-subject">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Destinatarios:</strong> <span id="summary-recipients">0</span>
+                        </div>
+                    </div>
+                    <div class="preview-container">
+                        <h4>Vista Previa del Email</h4>
+                        <div class="email-preview" id="email-preview-content">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="prev-step" style="display: none;">
+                        <i class="fas fa-arrow-left"></i>
+                        Anterior
+                    </button>
+                    <button type="button" class="btn btn-outline" data-modal="campaign-modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="next-step">
+                        Siguiente
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button type="submit" class="btn btn-success" id="send-campaign" style="display: none;">
+                        <i class="fas fa-rocket"></i>
+                        Enviar Campaña
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="test-email-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Enviar Email de Prueba</h3>
+                <button class="modal-close" data-modal="test-email-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="test-email-address">Email de Prueba</label>
+                    <input type="email" id="test-email-address" placeholder="tu@email.com" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-modal="test-email-modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="send-test-email">
+                        <i class="fas fa-paper-plane"></i>
+                        Enviar Prueba
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="import-csv-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Importar Contactos desde CSV</h3>
+                <button class="modal-close" data-modal="import-csv-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="csv-import-form" class="modal-body">
+                <div class="form-group">
+                    <label for="csv-file">Archivo CSV</label>
+                    <input type="file" id="csv-file" name="csv_file" accept=".csv" required>
+                    <small style="color: #6B7280; display: block; margin-top: 0.5rem;">
+                        El archivo debe contener las columnas: name, email, status (opcional)
+                    </small>
+                </div>
+                <div class="csv-format-info" style="background: #F9FAFB; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <h4 style="margin-bottom: 0.5rem;">Formato requerido:</h4>
+                    <pre style="font-size: 0.875rem; margin: 0; color: #6B7280;">name,email,status
+Juan Pérez,juan@example.com,active
+María García,maria@example.com,active</pre>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-modal="import-csv-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i>
+                        Importar Contactos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="toast-container" id="toast-container"></div>
+    
+    <script src="app.js"></script>
+    <script>
+        document.getElementById('btn-conevrtirhtml').addEventListener('click', function () {
+            const editor = document.getElementById('email-editor');
+            const rawText = editor.innerText || editor.textContent;
+            editor.innerHTML = rawText;
+        });
+    </script>
+
+
+    <style>
+        .pw-lock-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(31, 41, 55, 0.7); /* Color de fondo oscuro y semitransparente */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000; /* Un z-index alto para estar por encima de todo */
+            font-family: 'Inter', sans-serif; /* Usamos una fuente consistente */
+        }
+
+        .pw-lock-modal {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .pw-lock-modal h3 {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: #111827; /* Texto oscuro */
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .pw-lock-form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .pw-lock-form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #4B5563; /* Texto gris */
+        }
+
+        .pw-lock-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #D1D5DB; /* Borde gris claro */
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+        }
+        .pw-lock-input:focus {
+            outline: none;
+            border-color: #4F46E5; /* Resaltado azul al enfocar */
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+
+        .pw-lock-button {
+             background-color: #4F46E5; /* Color primario azul/violeta */
+             color: white;
+             border: none;
+             padding: 0.75rem 1.5rem;
+             border-radius: 6px;
+             cursor: pointer;
+             width: 100%;
+             font-size: 1rem;
+             font-weight: 600;
+             transition: background-color 0.2s ease-in-out;
+        }
+         .pw-lock-button:hover {
+             background-color: #4338CA; /* Un poco más oscuro al pasar el ratón */
+         }
+
+        .pw-lock-error-message {
+            color: #DC2626; /* Rojo para el error */
+            margin-top: 1rem;
+            min-height: 20px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+    </style>
+
+    <div class="pw-lock-backdrop" id="password-lock-backdrop">
+        <div class="pw-lock-modal">
+            <form id="password-lock-form">
+                <h3>Acceso Restringido</h3>
+                <div class="pw-lock-form-group">
+                    <label for="user-password-input">Contraseña de Usuario</label>
+                    <input class="pw-lock-input" type="password" id="user-password-input" required>
+                </div>
+                <button type="submit" class="pw-lock-button">Entrar</button>
+                <p id="password-lock-error" class="pw-lock-error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Seleccionamos los elementos de la modal usando sus IDs únicos
+        const backdrop = document.getElementById('password-lock-backdrop');
+        const form = document.getElementById('password-lock-form');
+        const passwordInput = document.getElementById('user-password-input');
+        const errorMessage = document.getElementById('password-lock-error');
+
+        // La contraseña correcta
+        const correctPassword = 'Coralia.1981';
+
+        // Enfocar el campo de contraseña para que el usuario pueda escribir de inmediato
+        passwordInput.focus();
+
+        form.addEventListener('submit', (event) => {
+            // Prevenimos que el formulario se envíe y recargue la página
+            event.preventDefault(); 
+            
+            const enteredPassword = passwordInput.value;
+
+            // Verificamos si la contraseña es correcta
+            if (enteredPassword === correctPassword) {
+                // Si es correcta, ocultamos la modal (el fondo oscuro)
+                backdrop.style.display = 'none';
+            } else {
+                // Si es incorrecta, mostramos un mensaje de error
+                errorMessage.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+                
+                // Limpiamos el campo de texto y lo volvemos a enfocar
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        });
+    });
+    </script>
+    </body>
+</html>
