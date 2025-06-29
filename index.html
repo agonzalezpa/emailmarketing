@@ -93,6 +93,11 @@
                             <p>Tasa de Clicks</p>
                         </div>
                     </div>
+                    <!--<div class="card">
+        <h3>Actividad Reciente</h3>
+        <div id="activity-feed">
+            </div>
+    </div>-->
                 </div>
                 
                 <div class="dashboard-grid">
@@ -125,10 +130,14 @@
                 </div>
             </section>
 
-            <section id="contacts-section" class="content-section">
+         <section id="contacts-section" class="content-section">
                 <div class="section-header">
                     <h2>Gestión de Contactos</h2>
                     <div class="header-actions">
+                        <button class="btn btn-outline" id="manage-lists-btn">
+                            <i class="fas fa-list"></i>
+                            Gestionar Listas
+                        </button>
                         <button class="btn btn-outline" id="import-contacts-btn">
                             <i class="fas fa-upload"></i>
                             Importar CSV
@@ -138,6 +147,14 @@
                             Agregar Contacto
                         </button>
                     </div>
+                </div>
+                
+                <!-- Lists Tabs -->
+                <div class="lists-tabs" id="lists-tabs">
+                    <button class="list-tab active" data-list="all">
+                        <i class="fas fa-users"></i>
+                        Todos los Contactos (<span id="all-contacts-count">0</span>)
+                    </button>
                 </div>
                 
                 <div class="card">
@@ -152,6 +169,9 @@
                                 <option value="active">Activos</option>
                                 <option value="inactive">Inactivos</option>
                             </select>
+                            <select id="filter-list">
+                                <option value="">Todas las listas</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -163,13 +183,14 @@
                                     <th>Nombre</th>
                                     <th>Email</th>
                                     <th>Estado</th>
+                                    <th>Listas</th>
                                     <th>Fecha Agregado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="contacts-tbody">
                                 <tr class="empty-row">
-                                    <td colspan="6" class="empty-state">
+                                    <td colspan="7" class="empty-state">
                                         <i class="fas fa-address-book"></i>
                                         <p>No hay contactos registrados</p>
                                     </td>
@@ -177,8 +198,35 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Bulk Actions -->
+                    <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                        <div class="bulk-actions-content">
+                            <span id="selected-count">0 contactos seleccionados</span>
+                            <div class="bulk-buttons">
+                                <select id="bulk-list-select">
+                                    <option value="">Agregar a lista...</option>
+                                </select>
+                                <button class="btn btn-outline btn-sm" id="bulk-add-to-list">
+                                    <i class="fas fa-plus"></i>
+                                    Agregar
+                                </button>
+                                <button class="btn btn-outline btn-sm" id="bulk-remove-from-list">
+                                    <i class="fas fa-minus"></i>
+                                    Remover
+                                </button>
+                                <button class="btn btn-outline btn-sm" id="bulk-delete">
+                                    <i class="fas fa-trash"></i>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
+
+
+            
 
             <section id="campaigns-section" class="content-section">
                 <div class="section-header">

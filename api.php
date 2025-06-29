@@ -359,7 +359,7 @@ class EmailMarketingAPI {
     }
     
     // Contact methods
-    private function getContacts() {
+    private function getContactsOLD() {
         $pdo = $this->getConnection();
         $search = $_GET['search'] ?? '';
         $status = $_GET['status'] ?? '';
@@ -406,6 +406,56 @@ class EmailMarketingAPI {
             ]
         ]);
     }
+    
+    // En tu clase Api, reemplaza el método getContacts
+
+private function getContacts() {
+    // Lee los parámetros de la URL para la paginación y búsqueda
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit = 15; // Define cuántos contactos mostrar por página
+    $search = $_GET['search'] ?? '';
+    $offset = ($page - 1) * $limit;
+
+    $pdo = $this->getConnection();
+    
+    $whereClause = "";
+    $params = [];
+    if (!empty($search)) {
+        // Cláusula WHERE para buscar por nombre o email
+        $whereClause = "WHERE name LIKE :search OR email LIKE :search";
+        $params[':search'] = "%$search%";
+    }
+
+    // 1. Obtener el número TOTAL de contactos que coinciden con la búsqueda
+    $totalSql = "SELECT COUNT(*) FROM contacts $whereClause";
+    $totalStmt = $pdo->prepare($totalSql);
+    $totalStmt->execute($params);
+    $total = $totalStmt->fetchColumn();
+
+    // 2. Obtener solo los contactos para la página actual
+    $dataSql = "SELECT * FROM contacts $whereClause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+    $dataStmt = $pdo->prepare($dataSql);
+
+    // Asignar los valores a los parámetros de la consulta
+    if (!empty($search)) {
+        $dataStmt->bindValue(':search', "%$search%", PDO::PARAM_STR);
+    }
+    $dataStmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    
+    $dataStmt->execute();
+    $contacts = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. Devolver una respuesta estructurada con los datos y la información de paginación
+    $response = [
+        'total' => (int)$total,
+        'page' => $page,
+        'limit' => $limit,
+        'data' => $contacts
+    ];
+
+    $this->sendResponse($response);
+}
     
     private function getContact($id) {
         $pdo = $this->getConnection();

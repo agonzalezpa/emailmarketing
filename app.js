@@ -1,8 +1,14 @@
 class EmailMarketingApp {
     constructor() {
+        this.currentPage = 1;
+        this.currentSearch = '';
         this.currentSection = 'dashboard';
         this.currentStep = 1;
         this.apiUrl = 'https://marketing.dom0125.com/api.php';
+        this.contacts = JSON.parse('[]');
+        this.currentSection = 'dashboard';
+        this.currentImportStep = 1;
+        this.currentListId = 'all';
         
         this.init();
     }
@@ -53,7 +59,7 @@ class EmailMarketingApp {
             this.handleSenderSubmit(e);
         });
 
-        // Contact management
+     // Contact management
         document.getElementById('add-contact-btn').addEventListener('click', () => {
             this.openModal('contact-modal');
         });
@@ -63,21 +69,45 @@ class EmailMarketingApp {
         });
 
         document.getElementById('search-contacts').addEventListener('input', (e) => {
-            this.filterContacts(e.target.value);
+            this.filterContacts();
         });
 
         document.getElementById('filter-status').addEventListener('change', (e) => {
-            this.filterContacts(document.getElementById('search-contacts').value, e.target.value);
+            this.filterContacts();
         });
 
-        // CSV Import
+        document.getElementById('filter-list').addEventListener('change', (e) => {
+            this.filterContacts();
+        });
+
+        // Bulk actions
+        document.getElementById('select-all-contacts').addEventListener('change', (e) => {
+            this.toggleSelectAll(e.target.checked);
+        });
+
+        document.getElementById('bulk-add-to-list').addEventListener('click', () => {
+            this.bulkAddToList();
+        });
+
+        document.getElementById('bulk-remove-from-list').addEventListener('click', () => {
+            this.bulkRemoveFromList();
+        });
+
+        document.getElementById('bulk-delete').addEventListener('click', () => {
+            this.bulkDeleteContacts();
+        });
+
+        // Import functionality
         document.getElementById('import-contacts-btn').addEventListener('click', () => {
-            this.openModal('import-csv-modal');
+            this.openModal('import-modal');
         });
 
-        document.getElementById('csv-import-form').addEventListener('submit', (e) => {
-            this.handleCsvImport(e);
+        document.getElementById('csv-file').addEventListener('change', (e) => {
+            this.handleFileSelect(e);
         });
+
+   
+
 
         // Campaign management
         document.getElementById('new-campaign-btn').addEventListener('click', () => {
@@ -116,12 +146,40 @@ class EmailMarketingApp {
         document.getElementById('send-test-email').addEventListener('click', () => {
             this.sendTestEmail();
         });
-
-        // Preview email
-      //  document.getElementById('preview-email').addEventListener('click', () => {
-      //      this.previewEmail();
-      //  });
     }
+    
+    // --- NUEVOS MÉTODOS Y MÉTODOS ACTUALIZADOS ---filter
+
+    /**
+     * Cambia entre la vista de 'Contactos' y 'Listas'
+     */
+    switchView(view) {
+        this.currentView = view;
+        const contactsView = document.getElementById('contacts-view');
+        const listsView = document.getElementById('lists-view');
+        const createListBtn = document.getElementById('create-list-btn');
+        const tabContacts = document.getElementById('tab-contacts');
+        const tabLists = document.getElementById('tab-lists');
+
+        if (view === 'lists') {
+            contactsView.style.display = 'none';
+            listsView.style.display = 'block';
+            createListBtn.style.display = 'inline-block';
+            tabContacts.classList.remove('active');
+            tabLists.classList.add('active');
+            this.loadLists();
+        } else { // 'contacts'
+            contactsView.style.display = 'block';
+            listsView.style.display = 'none';
+            createListBtn.style.display = 'none';
+            tabContacts.classList.add('active');
+            tabLists.classList.remove('active');
+           // this.loadContacts(1, this.currentSearch);
+            this.loadContacts();
+        }
+    }
+
+   
 
     async apiRequest(endpoint, method = 'GET', data = null) {
         try {
@@ -143,7 +201,7 @@ class EmailMarketingApp {
             
            const result = await response.json();
           // const text = await response.text();  // <- importante
-        console.log('Contenido crudo del servidor:', result);
+       // console.log('Contenido crudo del servidor:', result);
           // console.info(result);
 
           
@@ -160,7 +218,7 @@ class EmailMarketingApp {
         }
     }
 
-  async testDatabaseConnection() {
+    async testDatabaseConnection() {
     
 
     try {
@@ -406,56 +464,9 @@ class EmailMarketingApp {
         }
     }
 
-    async loadContacts() {
-        try {
-            const result = await this.apiRequest('contacts');
-            const contacts = result.contacts || [];
-            const tbody = document.getElementById('contacts-tbody');
-            
-            if (contacts.length === 0) {
-                tbody.innerHTML = `
-                    <tr class="empty-row">
-                        <td colspan="6" class="empty-state">
-                            <i class="fas fa-address-book"></i>
-                            <p>No hay contactos registrados</p>
-                        </td>
-                    </tr>
-                `;
-            } else {
-                tbody.innerHTML = contacts.map(contact => `
-                    <tr>
-                        <td><input type="checkbox" value="${contact.id}"></td>
-                        <td>${contact.name}</td>
-                        <td>${contact.email}</td>
-                        <td>
-                            <span class="status-badge status-${contact.status}">
-                                ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
-                            </span>
-                        </td>
-                        <td>${new Date(contact.created_at).toLocaleDateString()}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-            }
-        } catch (error) {
-            document.getElementById('contacts-tbody').innerHTML = `
-                <tr class="empty-row">
-                    <td colspan="6" class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Error al cargar contactos</p>
-                    </td>
-                </tr>
-            `;
-        }
-    }
-async loadCampaigns() {
+  
+    
+    async loadCampaigns() {
     try {
         const campaigns = await this.apiRequest('campaigns');
         const campaignGrid = document.getElementById('campaigns-grid');
@@ -534,8 +545,8 @@ async loadCampaigns() {
             }
 
             // Load activity feed - simplified for now
-            const activityFeed = document.getElementById('activity-feed');
-            activityFeed.innerHTML = '<p class="empty-state">Actividad disponible pronto</p>';
+//const activityFeed = document.getElementById('activity-feed');
+            //activityFeed.innerHTML = '<p class="empty-state">Actividad disponible pronto</p>';
             
         } catch (error) {
             const recentCampaigns = document.getElementById('recent-campaigns');
@@ -559,53 +570,7 @@ async loadCampaigns() {
         }
     }
 
-    async filterContacts(searchTerm, statusFilter = '') {
-        try {
-            const params = new URLSearchParams();
-            if (searchTerm) params.append('search', searchTerm);
-            if (statusFilter) params.append('status', statusFilter);
-            
-            const result = await this.apiRequest(`contacts?${params.toString()}`);
-            const contacts = result.contacts || [];
-            const tbody = document.getElementById('contacts-tbody');
-            
-            if (contacts.length === 0) {
-                tbody.innerHTML = `
-                    <tr class="empty-row">
-                        <td colspan="6" class="empty-state">
-                            <i class="fas fa-search"></i>
-                            <p>No se encontraron contactos</p>
-                        </td>
-                    </tr>
-                `;
-            } else {
-                tbody.innerHTML = contacts.map(contact => `
-                    <tr>
-                        <td><input type="checkbox" value="${contact.id}"></td>
-                        <td>${contact.name}</td>
-                        <td>${contact.email}</td>
-                        <td>
-                            <span class="status-badge status-${contact.status}">
-                                ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
-                            </span>
-                        </td>
-                        <td>${new Date(contact.created_at).toLocaleDateString()}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-            }
-        } catch (error) {
-            // Show error in table
-        }
-    }
-
+   
     async openCampaignModal() {
         try {
             const senders = await this.apiRequest('senders');
@@ -883,28 +848,11 @@ async loadCampaigns() {
         }
     }
 
-    async deleteContact(id) {
-        if (confirm('¿Estás seguro de que quieres eliminar este contacto?')) {
-            try {
-                await this.apiRequest(`contacts/${id}`, 'DELETE');
-                this.loadContacts();
-                this.updateStats();
-                this.showToast('success', 'Contacto eliminado', 'El contacto se ha eliminado correctamente.');
-            } catch (error) {
-                // Error already handled in apiRequest
-            }
-        }
-    }
-
     editSender(id) {
         // This would open the sender modal with the sender data pre-filled
         this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
     }
-
-    editContact(id) {
-        // This would open the contact modal with the contact data pre-filled
-        this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
-    }
+    
 
     showToast(type, title, message) {
         const toastContainer = document.getElementById('toast-container');
@@ -945,61 +893,642 @@ async loadCampaigns() {
             }
         }, 5000);
     }
+    
+    ///gestion de contactos
+     loadContacts() {
+        this.filterContacts();
+    }
+    
+   
+
+    /**
+     * Dibuja los botones de la paginación
+     */
+    renderPagination(total, limit, currentPage) {
+        const paginationControls = document.getElementById('pagination-controls');
+        const totalPages = Math.ceil(total / limit);
+        paginationControls.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        // Botón "Anterior"
+        paginationControls.innerHTML += `
+            <button onclick="emailApp.loadContacts(${currentPage - 1}, emailApp.currentSearch)" ${currentPage === 1 ? 'disabled' : ''}>
+                &laquo; Anterior
+            </button>`;
+
+        // Indicador de página
+        paginationControls.innerHTML += `<span>Página ${currentPage} de ${totalPages}</span>`;
+
+        // Botón "Siguiente"
+        paginationControls.innerHTML += `
+            <button onclick="emailApp.loadContacts(${currentPage + 1}, emailApp.currentSearch)" ${currentPage === totalPages ? 'disabled' : ''}>
+                Siguiente &raquo;
+            </button>`;
+    }
+    
+    
+    
+     loadContactLists() {
+        // Update lists tabs
+        const listsTabs = document.getElementById('lists-tabs');
+        const allContactsCount = this.contacts.length;
+        
+        let tabsHTML = `
+            <button class="list-tab ${this.currentListId === 'all' ? 'active' : ''}" data-list="all">
+                <i class="fas fa-users"></i>
+                Todos los Contactos (<span id="all-contacts-count">${allContactsCount}</span>)
+            </button>
+        `;
+        
+        this.contactLists.forEach(list => {
+            const memberCount = this.contactListMembers.filter(m => m.list_id === list.id).length;
+            tabsHTML += `
+                <button class="list-tab ${this.currentListId === list.id ? 'active' : ''}" data-list="${list.id}">
+                    <i class="fas fa-list"></i>
+                    ${list.name} (${memberCount})
+                </button>
+            `;
+        });
+        
+        listsTabs.innerHTML = tabsHTML;
+        
+        // Add event listeners to tabs
+        document.querySelectorAll('.list-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                this.currentListId = e.currentTarget.dataset.list;
+                this.loadContactLists();
+                this.filterContacts();
+            });
+        });
+        
+        // Update filter dropdown
+        const filterList = document.getElementById('filter-list');
+        filterList.innerHTML = '<option value="">Todas las listas</option>';
+        this.contactLists.forEach(list => {
+            filterList.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+        });
+        
+        // Update bulk action dropdown
+        const bulkListSelect = document.getElementById('bulk-list-select');
+        bulkListSelect.innerHTML = '<option value="">Agregar a lista...</option>';
+        this.contactLists.forEach(list => {
+            bulkListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+        });
+        
+        // Update import dropdown
+        const importListSelect = document.getElementById('import-list-select');
+        importListSelect.innerHTML = '<option value="">No agregar a ninguna lista</option>';
+        this.contactLists.forEach(list => {
+            importListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+        });
+        
+        // Update contact form checkboxes
+        this.updateContactListsCheckboxes();
+        
+        // Update lists modal
+        this.updateListsModal();
+    }
+    updateContactListsCheckboxes() {
+        const container = document.getElementById('contact-lists-checkboxes');
+        if (!container) return;
+        
+        if (this.contactLists.length === 0) {
+            container.innerHTML = '<p class="empty-state">No hay listas disponibles</p>';
+            return;
+        }
+        
+        container.innerHTML = this.contactLists.map(list => `
+            <div class="list-checkbox">
+                <input type="checkbox" id="list-${list.id}" value="${list.id}">
+                <label for="list-${list.id}">${list.name}</label>
+            </div>
+        `).join('');
+    }
+
+    updateListsModal() {
+        const container = document.getElementById('lists-container');
+        
+        if (this.contactLists.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-list"></i>
+                    <p>No hay listas creadas</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = this.contactLists.map(list => {
+            const memberCount = this.contactListMembers.filter(m => m.list_id === list.id).length;
+            return `
+                <div class="list-item">
+                    <div class="list-info">
+                        <h4>${list.name}</h4>
+                        <p>${list.description || 'Sin descripción'}</p>
+                        <small>${memberCount} contactos • Creada el ${new Date(list.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <div class="list-actions">
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.editList(${list.id})">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.deleteList(${list.id})">
+                            <i class="fas fa-trash"></i>
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    handleListSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const list = Object.fromEntries(formData.entries());
+        list.id = Date.now();
+        list.created_at = new Date().toISOString();
+        list.is_active = true;
+
+        this.contactLists.push(list);
+        localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
+        
+        this.loadContactLists();
+        this.closeModal('list-form-modal');
+        this.showToast('success', '¡Lista creada!', 'La lista se ha creado correctamente.');
+    }
+
+    filterContacts() {
+        const searchTerm = document.getElementById('search-contacts').value.toLowerCase();
+        const statusFilter = document.getElementById('filter-status').value;
+        const listFilter = document.getElementById('filter-list').value;
+        
+        let filteredContacts = [...this.contacts];
+
+        // Filter by current tab (list)
+        if (this.currentListId !== 'all') {
+            const listContactIds = this.contactListMembers
+                .filter(m => m.list_id == this.currentListId)
+                .map(m => m.contact_id);
+            filteredContacts = filteredContacts.filter(contact => listContactIds.includes(contact.id));
+        }
+
+        // Apply search filter
+        if (searchTerm) {
+            filteredContacts = filteredContacts.filter(contact =>
+                contact.name.toLowerCase().includes(searchTerm) ||
+                contact.email.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        // Apply status filter
+        if (statusFilter) {
+            filteredContacts = filteredContacts.filter(contact => contact.status === statusFilter);
+        }
+
+        // Apply list filter (additional filter)
+        if (listFilter) {
+            const listContactIds = this.contactListMembers
+                .filter(m => m.list_id == listFilter)
+                .map(m => m.contact_id);
+            filteredContacts = filteredContacts.filter(contact => listContactIds.includes(contact.id));
+        }
+
+        this.displayContacts(filteredContacts);
+    }
+
+    displayContacts(contacts) {
+        const tbody = document.getElementById('contacts-tbody');
+        
+        if (contacts.length === 0) {
+            tbody.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="7" class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>No se encontraron contactos</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = contacts.map(contact => {
+            const contactLists = this.getContactLists(contact.id);
+            const listsHTML = contactLists.length > 0 
+                ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
+                : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
+
+            return `
+                <tr>
+                    <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
+                    <td>${contact.name}</td>
+                    <td>${contact.email}</td>
+                    <td>
+                        <span class="status-badge status-${contact.status}">
+                            ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="contact-lists">
+                            ${listsHTML}
+                        </div>
+                    </td>
+                    <td>${new Date(contact.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // Add event listeners to checkboxes
+        document.querySelectorAll('.contact-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.updateBulkActions();
+            });
+        });
+    }
+
+    getContactLists(contactId) {
+        const listIds = this.contactListMembers
+            .filter(m => m.contact_id === contactId)
+            .map(m => m.list_id);
+        
+        return this.contactLists.filter(list => listIds.includes(list.id));
+    }
+
+    updateBulkActions() {
+        const selectedCheckboxes = document.querySelectorAll('.contact-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        const bulkActions = document.getElementById('bulk-actions');
+        const selectedCount = document.getElementById('selected-count');
+        
+        if (count > 0) {
+            bulkActions.style.display = 'block';
+            selectedCount.textContent = `${count} contactos seleccionados`;
+        } else {
+            bulkActions.style.display = 'none';
+        }
+        
+        // Update select all checkbox
+        const selectAll = document.getElementById('select-all-contacts');
+        const totalCheckboxes = document.querySelectorAll('.contact-checkbox').length;
+        selectAll.checked = count > 0 && count === totalCheckboxes;
+        selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+    }
+
+    toggleSelectAll(checked) {
+        document.querySelectorAll('.contact-checkbox').forEach(checkbox => {
+            checkbox.checked = checked;
+        });
+        this.updateBulkActions();
+    }
+
+    bulkAddToList() {
+        const listId = document.getElementById('bulk-list-select').value;
+        if (!listId) {
+            this.showToast('warning', 'Selecciona una lista', 'Por favor selecciona una lista.');
+            return;
+        }
+
+        const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
+            .map(cb => parseInt(cb.value));
+        
+        let added = 0;
+        selectedContacts.forEach(contactId => {
+            // Check if already in list
+            const exists = this.contactListMembers.some(m => 
+                m.contact_id === contactId && m.list_id == listId
+            );
+            
+            if (!exists) {
+                this.contactListMembers.push({
+                    id: Date.now() + Math.random(),
+                    contact_id: contactId,
+                    list_id: parseInt(listId),
+                    added_at: new Date().toISOString()
+                });
+                added++;
+            }
+        });
+
+        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
+        this.loadContactLists();
+        this.filterContacts();
+        
+        this.showToast('success', 'Contactos agregados', `${added} contactos agregados a la lista.`);
+    }
+
+    bulkRemoveFromList() {
+        if (this.currentListId === 'all') {
+            this.showToast('warning', 'Selecciona una lista', 'Primero selecciona una lista específica.');
+            return;
+        }
+
+        const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
+            .map(cb => parseInt(cb.value));
+        
+        this.contactListMembers = this.contactListMembers.filter(m => 
+            !(selectedContacts.includes(m.contact_id) && m.list_id == this.currentListId)
+        );
+
+        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
+        this.loadContactLists();
+        this.filterContacts();
+        
+        this.showToast('success', 'Contactos removidos', 'Contactos removidos de la lista.');
+    }
+
+    bulkDeleteContacts() {
+        if (!confirm('¿Estás seguro de que quieres eliminar los contactos seleccionados?')) {
+            return;
+        }
+
+        const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
+            .map(cb => parseInt(cb.value));
+        
+        this.contacts = this.contacts.filter(contact => !selectedContacts.includes(contact.id));
+        this.contactListMembers = this.contactListMembers.filter(m => !selectedContacts.includes(m.contact_id));
+
+        localStorage.setItem('contacts', JSON.stringify(this.contacts));
+        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
+        
+        this.loadContactLists();
+        this.filterContacts();
+        this.updateStats();
+        
+        this.showToast('success', 'Contactos eliminados', `${selectedContacts.length} contactos eliminados.`);
+    }
+
+    // Import functionality
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const csv = e.target.result;
+                this.csvData = this.parseCSV(csv);
+                
+                if (this.csvData.length === 0) {
+                    this.showToast('error', 'Archivo vacío', 'El archivo CSV está vacío o no tiene formato válido.');
+                    return;
+                }
+
+                // Validate required columns
+                const headers = Object.keys(this.csvData[0]);
+                if (!headers.includes('name') || !headers.includes('email')) {
+                    this.showToast('error', 'Columnas faltantes', 'El archivo debe contener las columnas "name" y "email".');
+                    return;
+                }
+
+                document.getElementById('import-next-step').disabled = false;
+            } catch (error) {
+                this.showToast('error', 'Error de archivo', 'No se pudo leer el archivo CSV.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    parseCSV(csv) {
+        const lines = csv.split('\n').filter(line => line.trim());
+        if (lines.length < 2) return [];
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        const data = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values.length >= headers.length) {
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+        }
+
+        return data;
+    }
+
+    nextImportStep() {
+        if (this.currentImportStep === 1 && this.csvData) {
+            this.currentImportStep = 2;
+            this.updateImportStep();
+            this.showImportPreview();
+        }
+    }
+
+    prevImportStep() {
+        if (this.currentImportStep > 1) {
+            this.currentImportStep = 1;
+            this.updateImportStep();
+        }
+    }
+
+    updateImportStep() {
+        // Update step indicators
+        document.querySelectorAll('.import-steps .step').forEach(step => step.classList.remove('active'));
+        document.querySelector(`[data-step="${this.currentImportStep}"]`).classList.add('active');
+        
+        // Update step content
+        document.querySelectorAll('.import-step-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`import-step-${this.currentImportStep}`).classList.add('active');
+        
+        // Update buttons
+        document.getElementById('import-prev-step').style.display = this.currentImportStep > 1 ? 'inline-flex' : 'none';
+        document.getElementById('import-next-step').style.display = this.currentImportStep < 2 ? 'inline-flex' : 'none';
+        document.getElementById('import-contacts').style.display = this.currentImportStep === 2 ? 'inline-flex' : 'none';
+    }
+
+    showImportPreview() {
+        const preview = document.getElementById('import-preview');
+        if (!this.csvData || this.csvData.length === 0) return;
+
+        const previewData = this.csvData.slice(0, 5); // Show first 5 rows
+        const headers = Object.keys(this.csvData[0]);
+
+        preview.innerHTML = `
+            <h4>Vista previa (primeras 5 filas de ${this.csvData.length} total):</h4>
+            <table class="import-preview-table">
+                <thead>
+                    <tr>
+                        ${headers.map(h => `<th>${h}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${previewData.map(row => `
+                        <tr>
+                            ${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    importContacts() {
+        if (!this.csvData) return;
+
+        const selectedListId = document.getElementById('import-list-select').value;
+        const createNewList = document.getElementById('create-new-list-checkbox').checked;
+        const newListName = document.getElementById('new-list-name').value;
+
+        let targetListId = selectedListId;
+
+        // Create new list if requested
+        if (createNewList && newListName) {
+            const newList = {
+                id: Date.now(),
+                name: newListName,
+                description: `Lista creada durante importación de ${this.csvData.length} contactos`,
+                created_at: new Date().toISOString(),
+                is_active: true
+            };
+            
+            this.contactLists.push(newList);
+            localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
+            targetListId = newList.id;
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        const errors = [];
+
+        this.csvData.forEach((row, index) => {
+            const email = row.email?.trim();
+            const name = row.name?.trim();
+
+            if (!email || !name) {
+                errors.push(`Fila ${index + 2}: Email o nombre faltante`);
+                return;
+            }
+
+            // Check if email already exists
+            if (this.contacts.some(c => c.email === email)) {
+                skipped++;
+                return;
+            }
+
+            // Create contact
+            const contact = {
+                id: Date.now() + Math.random(),
+                name: name,
+                email: email,
+                status: row.status || 'active',
+                created_at: new Date().toISOString()
+            };
+
+            this.contacts.push(contact);
+
+            // Add to list if specified
+            if (targetListId) {
+                this.contactListMembers.push({
+                    id: Date.now() + Math.random(),
+                    contact_id: contact.id,
+                    list_id: parseInt(targetListId),
+                    added_at: new Date().toISOString()
+                });
+            }
+
+            imported++;
+        });
+
+        // Save data
+        localStorage.setItem('contacts', JSON.stringify(this.contacts));
+        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
+
+        // Refresh UI
+        this.loadContacts();
+        this.loadContactLists();
+        this.updateStats();
+        this.closeModal('import-modal');
+
+        // Show results
+        let message = `${imported} contactos importados correctamente.`;
+        if (skipped > 0) message += ` ${skipped} emails duplicados omitidos.`;
+        if (errors.length > 0) message += ` ${errors.length} errores encontrados.`;
+
+        this.showToast('success', 'Importación completada', message);
+
+        // Reset import state
+        this.currentImportStep = 1;
+        this.csvData = null;
+        document.getElementById('csv-file').value = '';
+        this.updateImportStep();
+    }
+
+    deleteList(id) {
+        if (confirm('¿Estás seguro de que quieres eliminar esta lista? Los contactos no se eliminarán.')) {
+            this.contactLists = this.contactLists.filter(l => l.id !== id);
+            this.contactListMembers = this.contactListMembers.filter(m => m.list_id !== id);
+            
+            localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
+            localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
+            
+            // Reset to "all" if current list was deleted
+            if (this.currentListId == id) {
+                this.currentListId = 'all';
+            }
+            
+            this.loadContactLists();
+            this.filterContacts();
+            this.showToast('success', 'Lista eliminada', 'La lista se ha eliminado correctamente.');
+        }
+    }
+
+    editList(id) {
+        this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
+    }
+
+    deleteSender(id) {
+        if (confirm('¿Estás seguro de que quieres eliminar este remitente?')) {
+            this.senders = this.senders.filter(s => s.id !== id);
+            localStorage.setItem('senders', JSON.stringify(this.senders));
+            this.loadSenders();
+            this.showToast('success', 'Remitente eliminado', 'El remitente se ha eliminado correctamente.');
+        }
+    }
+
+    deleteContact(id) {
+        if (confirm('¿Estás seguro de que quieres eliminar este contacto?')) {
+            this.contacts = this.contacts.filter(c => c.id !== id);
+            localStorage.setItem('contacts', JSON.stringify(this.contacts));
+            this.loadContacts();
+            this.updateStats();
+            this.showToast('success', 'Contacto eliminado', 'El contacto se ha eliminado correctamente.');
+        }
+    }
+
+    editSender(id) {
+        // This would open the sender modal with the sender data pre-filled
+        this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
+    }
+
+    editContact(id) {
+        // This would open the contact modal with the contact data pre-filled
+        this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
+    }
+
 }
 
 // Initialize the app
 const emailApp = new EmailMarketingApp();
 
-// Add some sample data for demonstration
-if (localStorage.getItem('senders') === null) {
-    const sampleSenders = [
-        {
-            id: 1,
-            name: 'Marketing Team',
-            email: 'marketing@miempresa.com',
-            smtp_host: 'smtp.gmail.com',
-            smtp_port: 587,
-            smtp_username: 'marketing@miempresa.com',
-            smtp_password: '****',
-            created_at: new Date().toISOString()
-        }
-    ];
-    localStorage.setItem('senders', JSON.stringify(sampleSenders));
-}
+// --- EVENT LISTENERS ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Carga inicial de datos
+    emailApp.loadCampaigns();
+    emailApp.loadContacts(); // Carga la primera página de contactos
 
-if (localStorage.getItem('contacts') === null) {
-    const sampleContacts = [
-        {
-            id: 1,
-            name: 'Juan Pérez',
-            email: 'juan@example.com',
-            status: 'active',
-            created_at: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-            id: 2,
-            name: 'María García',
-            email: 'maria@example.com',
-            status: 'active',
-            created_at: new Date(Date.now() - 172800000).toISOString()
-        },
-        {
-            id: 3,
-            name: 'Carlos López',
-            email: 'carlos@example.com',
-            status: 'inactive',
-            created_at: new Date(Date.now() - 259200000).toISOString()
-        }
-    ];
-    localStorage.setItem('contacts', JSON.stringify(sampleContacts));
-}
+    // Listener para el campo de búsqueda
+  
+});
 
-// Reload the app with sample data
-//setTimeout(() => {
-  //  emailApp.senders = JSON.parse(localStorage.getItem('senders') || '[]');
-    //emailApp.contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-    //emailApp.loadSenders();
-    //emailApp.loadContacts();
-    //emailApp.loadDashboard();
-    //emailApp.updateStats();
-//}, 100);
