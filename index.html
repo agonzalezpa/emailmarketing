@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,9 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📧</text></svg>">
-    
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📧</text></svg>">
+
 </head>
+
 <body>
     <div class="app-container">
         <nav class="sidebar">
@@ -99,7 +101,7 @@
             </div>
     </div>-->
                 </div>
-                
+
                 <div class="dashboard-grid">
                     <div class="card">
                         <h3>Campañas Recientes</h3>
@@ -107,7 +109,7 @@
                             <p class="empty-state">No hay campañas recientes</p>
                         </div>
                     </div>
-                    </div>
+                </div>
             </section>
 
             <section id="senders-section" class="content-section">
@@ -118,7 +120,7 @@
                         Agregar Remitente
                     </button>
                 </div>
-                
+
                 <div class="card">
                     <div class="senders-list" id="senders-list">
                         <div class="empty-state">
@@ -130,7 +132,7 @@
                 </div>
             </section>
 
-         <section id="contacts-section" class="content-section">
+            <section id="contacts-section" class="content-section">
                 <div class="section-header">
                     <h2>Gestión de Contactos</h2>
                     <div class="header-actions">
@@ -148,7 +150,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Lists Tabs -->
                 <div class="lists-tabs" id="lists-tabs">
                     <button class="list-tab active" data-list="all">
@@ -156,7 +158,7 @@
                         Todos los Contactos (<span id="all-contacts-count">0</span>)
                     </button>
                 </div>
-                
+
                 <div class="card">
                     <div class="search-bar">
                         <div class="search-input-container">
@@ -174,7 +176,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="contacts-table-container">
                         <table class="contacts-table" id="contacts-table">
                             <thead>
@@ -198,7 +200,7 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Bulk Actions -->
                     <div class="bulk-actions" id="bulk-actions" style="display: none;">
                         <div class="bulk-actions-content">
@@ -226,7 +228,7 @@
             </section>
 
 
-            
+
 
             <section id="campaigns-section" class="content-section">
                 <div class="section-header">
@@ -236,7 +238,7 @@
                         Crear Campaña
                     </button>
                 </div>
-                
+
                 <div class="campaigns-grid" id="campaigns-grid">
                     <div class="empty-state">
                         <i class="fas fa-rocket"></i>
@@ -254,7 +256,7 @@
                         Crear Plantilla
                     </button>
                 </div>
-                
+
                 <div class="templates-grid" id="templates-grid">
                     <div class="empty-state">
                         <i class="fas fa-palette"></i>
@@ -410,20 +412,20 @@
                             </button>
                         </div>
                         <div class="editor-content" id="email-editor" contenteditable="true">
-                            
+
                         </div>
-                        
+
                     </div>
                     <div class="editor-actions">
-                       <button type="button" class="btn btn-outline" id="btn-conevrtirhtml">
+                        <button type="button" class="btn btn-outline" id="btn-conevrtirhtml">
                             <i class="fas fa-paper-plane"></i>
-                           Convertir a HTML
+                            Convertir a HTML
                         </button>
                         <button type="button" class="btn btn-outline" id="test-email">
                             <i class="fas fa-paper-plane"></i>
                             Enviar Prueba
                         </button>
-                        
+
                     </div>
                 </div>
 
@@ -446,7 +448,7 @@
                     <div class="preview-container">
                         <h4>Vista Previa del Email</h4>
                         <div class="email-preview" id="email-preview-content">
-                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -509,7 +511,8 @@
                         El archivo debe contener las columnas: name, email, status (opcional)
                     </small>
                 </div>
-                <div class="csv-format-info" style="background: #F9FAFB; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                <div class="csv-format-info"
+                    style="background: #F9FAFB; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
                     <h4 style="margin-bottom: 0.5rem;">Formato requerido:</h4>
                     <pre style="font-size: 0.875rem; margin: 0; color: #6B7280;">name,email,status
 Juan Pérez,juan@example.com,active
@@ -525,9 +528,9 @@ María García,maria@example.com,active</pre>
             </form>
         </div>
     </div>
-    
+
     <div class="toast-container" id="toast-container"></div>
-    
+
     <script src="app.js"></script>
     <script>
         document.getElementById('btn-conevrtirhtml').addEventListener('click', function () {
@@ -545,12 +548,15 @@ María García,maria@example.com,active</pre>
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(31, 41, 55, 0.7); /* Color de fondo oscuro y semitransparente */
+            background-color: rgba(31, 41, 55, 0.7);
+            /* Color de fondo oscuro y semitransparente */
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 2000; /* Un z-index alto para estar por encima de todo */
-            font-family: 'Inter', sans-serif; /* Usamos una fuente consistente */
+            z-index: 2000;
+            /* Un z-index alto para estar por encima de todo */
+            font-family: 'Inter', sans-serif;
+            /* Usamos una fuente consistente */
         }
 
         .pw-lock-modal {
@@ -566,11 +572,12 @@ María García,maria@example.com,active</pre>
         .pw-lock-modal h3 {
             margin-top: 0;
             margin-bottom: 1.5rem;
-            color: #111827; /* Texto oscuro */
+            color: #111827;
+            /* Texto oscuro */
             font-size: 1.25rem;
             font-weight: 600;
         }
-        
+
         .pw-lock-form-group {
             margin-bottom: 1.5rem;
             text-align: left;
@@ -581,41 +588,50 @@ María García,maria@example.com,active</pre>
             margin-bottom: 0.5rem;
             font-weight: 500;
             font-size: 0.875rem;
-            color: #4B5563; /* Texto gris */
+            color: #4B5563;
+            /* Texto gris */
         }
 
         .pw-lock-input {
             width: 100%;
             padding: 0.75rem;
-            border: 1px solid #D1D5DB; /* Borde gris claro */
+            border: 1px solid #D1D5DB;
+            /* Borde gris claro */
             border-radius: 6px;
             font-size: 1rem;
-            box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+            box-sizing: border-box;
+            /* Asegura que el padding no afecte el ancho total */
         }
+
         .pw-lock-input:focus {
             outline: none;
-            border-color: #4F46E5; /* Resaltado azul al enfocar */
+            border-color: #4F46E5;
+            /* Resaltado azul al enfocar */
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
         }
 
         .pw-lock-button {
-             background-color: #4F46E5; /* Color primario azul/violeta */
-             color: white;
-             border: none;
-             padding: 0.75rem 1.5rem;
-             border-radius: 6px;
-             cursor: pointer;
-             width: 100%;
-             font-size: 1rem;
-             font-weight: 600;
-             transition: background-color 0.2s ease-in-out;
+            background-color: #4F46E5;
+            /* Color primario azul/violeta */
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
         }
-         .pw-lock-button:hover {
-             background-color: #4338CA; /* Un poco más oscuro al pasar el ratón */
-         }
+
+        .pw-lock-button:hover {
+            background-color: #4338CA;
+            /* Un poco más oscuro al pasar el ratón */
+        }
 
         .pw-lock-error-message {
-            color: #DC2626; /* Rojo para el error */
+            color: #DC2626;
+            /* Rojo para el error */
             margin-top: 1rem;
             min-height: 20px;
             font-weight: 500;
@@ -638,39 +654,40 @@ María García,maria@example.com,active</pre>
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // Seleccionamos los elementos de la modal usando sus IDs únicos
-        const backdrop = document.getElementById('password-lock-backdrop');
-        const form = document.getElementById('password-lock-form');
-        const passwordInput = document.getElementById('user-password-input');
-        const errorMessage = document.getElementById('password-lock-error');
+        document.addEventListener('DOMContentLoaded', () => {
+            // Seleccionamos los elementos de la modal usando sus IDs únicos
+            const backdrop = document.getElementById('password-lock-backdrop');
+            const form = document.getElementById('password-lock-form');
+            const passwordInput = document.getElementById('user-password-input');
+            const errorMessage = document.getElementById('password-lock-error');
 
-        // La contraseña correcta
-        const correctPassword = 'Coralia.1981';
+            // La contraseña correcta
+            const correctPassword = 'Coralia.1981';
 
-        // Enfocar el campo de contraseña para que el usuario pueda escribir de inmediato
-        passwordInput.focus();
+            // Enfocar el campo de contraseña para que el usuario pueda escribir de inmediato
+            passwordInput.focus();
 
-        form.addEventListener('submit', (event) => {
-            // Prevenimos que el formulario se envíe y recargue la página
-            event.preventDefault(); 
-            
-            const enteredPassword = passwordInput.value;
+            form.addEventListener('submit', (event) => {
+                // Prevenimos que el formulario se envíe y recargue la página
+                event.preventDefault();
 
-            // Verificamos si la contraseña es correcta
-            if (enteredPassword === correctPassword) {
-                // Si es correcta, ocultamos la modal (el fondo oscuro)
-                backdrop.style.display = 'none';
-            } else {
-                // Si es incorrecta, mostramos un mensaje de error
-                errorMessage.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
-                
-                // Limpiamos el campo de texto y lo volvemos a enfocar
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
+                const enteredPassword = passwordInput.value;
+
+                // Verificamos si la contraseña es correcta
+                if (enteredPassword === correctPassword) {
+                    // Si es correcta, ocultamos la modal (el fondo oscuro)
+                    backdrop.style.display = 'none';
+                } else {
+                    // Si es incorrecta, mostramos un mensaje de error
+                    errorMessage.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+
+                    // Limpiamos el campo de texto y lo volvemos a enfocar
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            });
         });
-    });
     </script>
-    </body>
+</body>
+
 </html>

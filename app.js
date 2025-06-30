@@ -9,7 +9,7 @@ class EmailMarketingApp {
         this.currentSection = 'dashboard';
         this.currentImportStep = 1;
         this.currentListId = 'all';
-        
+
         this.init();
     }
 
@@ -21,7 +21,7 @@ class EmailMarketingApp {
         this.loadCampaigns();
         this.updateStats();
     }
-    
+
 
     setupEventListeners() {
         // Navigation
@@ -35,15 +35,15 @@ class EmailMarketingApp {
         // Modal controls
         document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const modal = e.currentTarget.dataset.modal || 
-                             e.currentTarget.closest('.modal').id;
+                const modal = e.currentTarget.dataset.modal ||
+                    e.currentTarget.closest('.modal').id;
                 this.closeModal(modal);
             });
         });
 
         // Database connection test
-      //  document.getElementById('test-db-connection').addEventListener('click', () => {
-         //   this.testDatabaseConnection();
+        //  document.getElementById('test-db-connection').addEventListener('click', () => {
+        //   this.testDatabaseConnection();
         //});
 
         // Sender management
@@ -59,7 +59,7 @@ class EmailMarketingApp {
             this.handleSenderSubmit(e);
         });
 
-     // Contact management
+        // Contact management
         document.getElementById('add-contact-btn').addEventListener('click', () => {
             this.openModal('contact-modal');
         });
@@ -106,7 +106,7 @@ class EmailMarketingApp {
             this.handleFileSelect(e);
         });
 
-   
+
 
 
         // Campaign management
@@ -147,7 +147,7 @@ class EmailMarketingApp {
             this.sendTestEmail();
         });
     }
-    
+
     // --- NUEVOS MÉTODOS Y MÉTODOS ACTUALIZADOS ---filter
 
     /**
@@ -174,12 +174,12 @@ class EmailMarketingApp {
             createListBtn.style.display = 'none';
             tabContacts.classList.add('active');
             tabLists.classList.remove('active');
-            this.loadContacts(1, this.currentSearch);
+            this.loadContacts(1, "");
             //this.loadContacts();
         }
     }
 
-   
+
 
     async apiRequest(endpoint, method = 'GET', data = null) {
         try {
@@ -194,18 +194,18 @@ class EmailMarketingApp {
                 options.body = JSON.stringify(data);
             }
 
-            
-  //const response = await fetch(`${this.apiUrl}?endpoint=${endpoint}`, options);
+
+            //const response = await fetch(`${this.apiUrl}?endpoint=${endpoint}`, options);
             const url = `${this.apiUrl.replace(/\/api\.php$/, '')}/api.php/${endpoint}`;
             const response = await fetch(url, options);
-            
-           const result = await response.json();
-          // const text = await response.text();  // <- importante
-       // console.log('Contenido crudo del servidor:', result);
-          // console.info(result);
 
-          
-           
+            const result = await response.json();
+            // const text = await response.text();  // <- importante
+            // console.log('Contenido crudo del servidor:', result);
+            // console.info(result);
+
+
+
 
             if (!result.success) {
                 throw new Error(result.error || 'API request failed');
@@ -218,29 +218,29 @@ class EmailMarketingApp {
         }
     }
 
-    async testDatabaseConnection() {  
+    async testDatabaseConnection() {
 
-    try {
-        this.showToast('info', 'Probando conexión', 'Verificando conexión a la base de datos...');
-        const url = `${this.apiUrl.replace(/\/api\.php$/, '')}/api.php/test-connection`;
-        const result = await fetch(url);
-        console.log(result.status);
+        try {
+            this.showToast('info', 'Probando conexión', 'Verificando conexión a la base de datos...');
+            const url = `${this.apiUrl.replace(/\/api\.php$/, '')}/api.php/test-connection`;
+            const result = await fetch(url);
+            console.log(result.status);
 
-        if (result.status==200) {
-            this.showToast('success', 'Conexión exitosa', 'La conexión a la base de datos funciona correctamente.');
-            this.loadDashboard();
-            this.loadSenders();
-            this.loadContacts();
-            this.loadCampaigns();
-            this.updateStats();
-        } else {
-            this.showToast('error', 'Error de conexión', data.error || 'No se pudo conectar a la base de datos.');
+            if (result.status == 200) {
+                this.showToast('success', 'Conexión exitosa', 'La conexión a la base de datos funciona correctamente.');
+                this.loadDashboard();
+                this.loadSenders();
+                this.loadContacts();
+                this.loadCampaigns();
+                this.updateStats();
+            } else {
+                this.showToast('error', 'Error de conexión', data.error || 'No se pudo conectar a la base de datos.');
+            }
+        } catch (error) {
+            console.error('Error al conectar:', error);
+            this.showToast('error', 'Error de conexión', 'No se pudo verificar la conexión a la base de datos.');
         }
-    } catch (error) {
-        console.error('Error al conectar:', error);
-        this.showToast('error', 'Error de conexión', 'No se pudo verificar la conexión a la base de datos.');
     }
-}
 
 
     switchSection(section) {
@@ -279,7 +279,7 @@ class EmailMarketingApp {
         const modal = document.getElementById(modalId);
         modal.classList.remove('active');
         document.body.style.overflow = 'auto';
-        
+
         // Reset forms
         const form = modal.querySelector('form');
         if (form) {
@@ -311,7 +311,7 @@ class EmailMarketingApp {
         e.preventDefault();
         const formData = new FormData(e.target);
         const contact = Object.fromEntries(formData.entries());
-        
+
         // Check if email already exists
         if (this.contacts.some(c => c.email === contact.email)) {
             this.showToast('error', 'Email duplicado', 'Ya existe un contacto con ese email.');
@@ -334,10 +334,10 @@ class EmailMarketingApp {
 
     async handleCsvImport(e) {
         e.preventDefault();
-        
+
         const fileInput = document.getElementById('csv-file');
         const file = fileInput.files[0];
-        
+
         if (!file) {
             this.showToast('error', 'Archivo requerido', 'Por favor selecciona un archivo CSV.');
             return;
@@ -358,13 +358,13 @@ class EmailMarketingApp {
                 this.loadContacts();
                 this.updateStats();
                 this.closeModal('import-csv-modal');
-                
+
                 const message = `${result.data.imported} contactos importados correctamente.`;
-                const errorMessage = result.data.errors.length > 0 ? 
+                const errorMessage = result.data.errors.length > 0 ?
                     ` ${result.data.errors.length} errores encontrados.` : '';
-                
+
                 this.showToast('success', 'Importación completada', message + errorMessage);
-                
+
                 if (result.data.errors.length > 0) {
                     console.warn('Import errors:', result.data.errors);
                 }
@@ -378,7 +378,7 @@ class EmailMarketingApp {
 
     async handleCampaignSubmit(e) {
         e.preventDefault();
-        
+
         const campaign = {
             name: document.getElementById('campaign-name').value,
             sender_id: document.getElementById('campaign-sender').value,
@@ -388,10 +388,10 @@ class EmailMarketingApp {
 
         try {
             const result = await this.apiRequest('campaigns', 'POST', campaign);
-            
+
             // Send the campaign
             await this.apiRequest(`send-campaign/${result.id}`, 'POST');
-            
+
             this.loadCampaigns();
             this.updateStats();
             this.closeModal('campaign-modal');
@@ -415,7 +415,7 @@ class EmailMarketingApp {
                         <button class="btn btn-outline" id="add-first-sender">Agregar Primer Remitente</button>
                     </div>
                 `;
-                
+
                 // Re-attach event listener
                 document.getElementById('add-first-sender').addEventListener('click', () => {
                     this.openModal('sender-modal');
@@ -447,9 +447,9 @@ class EmailMarketingApp {
                 // Update campaign sender select
                 campaignSenderSelect.innerHTML = `
                     <option value="">Seleccionar remitente...</option>
-                    ${senders.map(sender => 
-                        `<option value="${sender.id}">${sender.name} (${sender.email})</option>`
-                    ).join('')}
+                    ${senders.map(sender =>
+                    `<option value="${sender.id}">${sender.name} (${sender.email})</option>`
+                ).join('')}
                 `;
             }
         } catch (error) {
@@ -463,23 +463,23 @@ class EmailMarketingApp {
         }
     }
 
-  
-    
+
+
     async loadCampaigns() {
-    try {
-        const campaigns = await this.apiRequest('campaigns');
-        const campaignGrid = document.getElementById('campaigns-grid');
-        
-        if (campaigns.length === 0) {
-            campaignGrid.innerHTML = `
+        try {
+            const campaigns = await this.apiRequest('campaigns');
+            const campaignGrid = document.getElementById('campaigns-grid');
+
+            if (campaigns.length === 0) {
+                campaignGrid.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-rocket"></i>
                     <p>No hay campañas creadas</p>
                     <button class="btn btn-outline" onclick="emailApp.openCampaignModal()">Crear Primera Campaña</button>
                 </div>
             `;
-        } else {
-            campaignGrid.innerHTML = campaigns.map(campaign => `
+            } else {
+                campaignGrid.innerHTML = campaigns.map(campaign => `
                 <div class="card">
                     <div style="padding: 1.5rem;">
                         <h3>${campaign.name}</h3>
@@ -503,33 +503,33 @@ class EmailMarketingApp {
                     </div>
                 </div>
             `).join('');
-        }
-    } catch (error) {
-        console.error("Error al cargar campañas:", error); // Añadido para depuración
-        document.getElementById('campaigns-grid').innerHTML = `
+            }
+        } catch (error) {
+            console.error("Error al cargar campañas:", error); // Añadido para depuración
+            document.getElementById('campaigns-grid').innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Error al cargar campañas</p>
                 <button class="btn btn-outline" onclick="emailApp.loadCampaigns()">Reintentar</button>
             </div>
         `;
+        }
     }
-}
 
 
     async loadDashboard() {
         try {
             const campaigns = await this.apiRequest('campaigns');
-            
+
             // Load recent campaigns
             const recentCampaigns = document.getElementById('recent-campaigns');
             if (!recentCampaigns) {
                 console.warn('recent-campaigns element not found');
                 return;
             }
-            
+
             const recentCampaignsList = campaigns.slice(-5).reverse();
-            
+
             if (recentCampaignsList.length === 0) {
                 recentCampaigns.innerHTML = '<p class="empty-state">No hay campañas recientes</p>';
             } else {
@@ -544,9 +544,9 @@ class EmailMarketingApp {
             }
 
             // Load activity feed - simplified for now
-//const activityFeed = document.getElementById('activity-feed');
+            //const activityFeed = document.getElementById('activity-feed');
             //activityFeed.innerHTML = '<p class="empty-state">Actividad disponible pronto</p>';
-            
+
         } catch (error) {
             const recentCampaigns = document.getElementById('recent-campaigns');
             if (recentCampaigns) {
@@ -559,7 +559,7 @@ class EmailMarketingApp {
     async updateStats() {
         try {
             const stats = await this.apiRequest('stats');
-            
+
             document.getElementById('campaigns-count').textContent = stats.total_campaigns || 0;
             document.getElementById('contacts-count').textContent = stats.total_contacts || 0;
             document.getElementById('open-rate').textContent = (stats.avg_open_rate || 0) + '%';
@@ -569,13 +569,13 @@ class EmailMarketingApp {
         }
     }
 
-   
+
     async openCampaignModal() {
         try {
             const senders = await this.apiRequest('senders');
             const contacts = await this.apiRequest('contacts');
             const activeContacts = contacts.contacts ? contacts.contacts.filter(c => c.status === 'active') : [];
-            
+
             if (senders.length === 0) {
                 this.showToast('warning', 'Sin remitentes', 'Primero debes configurar al menos un remitente.');
                 return;
@@ -594,19 +594,19 @@ class EmailMarketingApp {
 
     resetCampaignModal() {
         this.currentStep = 1;
-        
+
         // Reset steps
         document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
         document.querySelector('[data-step="1"]').classList.add('active');
-        
+
         document.querySelectorAll('.step-content').forEach(content => content.classList.remove('active'));
         document.getElementById('step-1').classList.add('active');
-        
+
         // Reset buttons
         document.getElementById('prev-step').style.display = 'none';
         document.getElementById('next-step').style.display = 'inline-flex';
         document.getElementById('send-campaign').style.display = 'none';
-        
+
         // Reset editor
         document.getElementById('email-editor').innerHTML = '<p>Escribe tu mensaje aquí...</p>';
     }
@@ -620,7 +620,7 @@ class EmailMarketingApp {
 
             this.currentStep++;
             this.updateCampaignStep();
-            
+
             if (this.currentStep === 3) {
                 this.updateCampaignSummary();
             }
@@ -639,7 +639,7 @@ class EmailMarketingApp {
             const name = document.getElementById('campaign-name').value;
             const sender = document.getElementById('campaign-sender').value;
             const subject = document.getElementById('campaign-subject').value;
-            
+
             if (!name || !sender || !subject) {
                 this.showToast('error', 'Campos requeridos', 'Por favor completa todos los campos.');
                 return false;
@@ -658,11 +658,11 @@ class EmailMarketingApp {
         // Update step indicators
         document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
         document.querySelector(`[data-step="${this.currentStep}"]`).classList.add('active');
-        
+
         // Update step content
         document.querySelectorAll('.step-content').forEach(content => content.classList.remove('active'));
         document.getElementById(`step-${this.currentStep}`).classList.add('active');
-        
+
         // Update buttons
         document.getElementById('prev-step').style.display = this.currentStep > 1 ? 'inline-flex' : 'none';
         document.getElementById('next-step').style.display = this.currentStep < 3 ? 'inline-flex' : 'none';
@@ -675,19 +675,19 @@ class EmailMarketingApp {
         const sender = this.senders.find(s => s.id == senderId);
         const subject = document.getElementById('campaign-subject').value;
         const activeContacts = this.contacts.filter(c => c.status === 'active').length;
-        
+
         document.getElementById('summary-name').textContent = name;
         document.getElementById('summary-sender').textContent = sender ? `${sender.name} (${sender.email})` : '';
         document.getElementById('summary-subject').textContent = subject;
         document.getElementById('summary-recipients').textContent = activeContacts;
-        
+
         // Update preview with proper HTML rendering
         const previewContainer = document.getElementById('email-preview-content');
         const emailContent = document.getElementById('email-editor').innerHTML;
-        
+
         // Clear previous content
         previewContainer.innerHTML = '';
-        
+
         // Create a styled preview
         const previewDiv = document.createElement('div');
         previewDiv.style.cssText = `
@@ -700,7 +700,7 @@ class EmailMarketingApp {
             max-height: 400px;
             overflow-y: auto;
         `;
-        
+
         // Add subject as header
         if (subject) {
             const subjectHeader = document.createElement('div');
@@ -715,12 +715,12 @@ class EmailMarketingApp {
             subjectHeader.textContent = subject;
             previewDiv.appendChild(subjectHeader);
         }
-        
+
         // Add email content
         const contentDiv = document.createElement('div');
         contentDiv.innerHTML = emailContent;
         previewDiv.appendChild(contentDiv);
-        
+
         previewContainer.appendChild(previewDiv);
     }
 
@@ -738,14 +738,14 @@ class EmailMarketingApp {
         } else {
             document.execCommand(command, false, null);
         }
-        
+
         document.getElementById('email-editor').focus();
     }
 
     previewEmail() {
         const content = document.getElementById('email-editor').value;
         const subject = document.getElementById('campaign-subject').value || 'Vista Previa del Email';
-        
+
         const previewWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
         previewWindow.document.write(`
             <!DOCTYPE html>
@@ -851,20 +851,20 @@ class EmailMarketingApp {
         // This would open the sender modal with the sender data pre-filled
         this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
     }
-    
+
 
     showToast(type, title, message) {
         const toastContainer = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        
+
         const icons = {
             success: 'fas fa-check-circle',
             error: 'fas fa-exclamation-circle',
             warning: 'fas fa-exclamation-triangle',
             info: 'fas fa-info-circle'
         };
-        
+
         toast.innerHTML = `
             <div class="toast-icon">
                 <i class="${icons[type]}"></i>
@@ -877,14 +877,14 @@ class EmailMarketingApp {
                 <i class="fas fa-times"></i>
             </button>
         `;
-        
+
         // Add close functionality
         toast.querySelector('.toast-close').addEventListener('click', () => {
             toast.remove();
         });
-        
+
         toastContainer.appendChild(toast);
-        
+
         // Auto remove after 5 seconds
         setTimeout(() => {
             if (toast.parentNode) {
@@ -892,22 +892,19 @@ class EmailMarketingApp {
             }
         }, 5000);
     }
-    
+
     ///gestion de contactos
-     loadContacts() {
+    loadContacts() {
         this.filterContacts();
     }
     async loadContacts(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
-        
         const tableBody = document.getElementById('contacts-tbody');
         if (!tableBody) return;
         tableBody.innerHTML = '<tr><td colspan="4">Cargando contactos...</td></tr>';
-
         try {
-            const endpoint = `getContacts&page=${page}&search=${encodeURIComponent(search)}`;
-            const response = await this.apiRequest(endpoint);
+            const response = await this.apiRequest(`contacts?page=${page}&search=${encodeURIComponent(search)}`, 'GET');
             const { total, limit, data: contacts } = response;
 
             if (contacts.length === 0) {
@@ -928,7 +925,7 @@ class EmailMarketingApp {
             tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
         }
     }
-   
+
 
     /**
      * Dibuja los botones de la paginación
@@ -955,21 +952,19 @@ class EmailMarketingApp {
                 Siguiente &raquo;
             </button>`;
     }
-    
-    
-    
-     loadContactLists() {
+
+    loadContactLists() {
         // Update lists tabs
         const listsTabs = document.getElementById('lists-tabs');
         const allContactsCount = this.contacts.length;
-        
+
         let tabsHTML = `
             <button class="list-tab ${this.currentListId === 'all' ? 'active' : ''}" data-list="all">
                 <i class="fas fa-users"></i>
                 Todos los Contactos (<span id="all-contacts-count">${allContactsCount}</span>)
             </button>
         `;
-        
+
         this.contactLists.forEach(list => {
             const memberCount = this.contactListMembers.filter(m => m.list_id === list.id).length;
             tabsHTML += `
@@ -979,9 +974,9 @@ class EmailMarketingApp {
                 </button>
             `;
         });
-        
+
         listsTabs.innerHTML = tabsHTML;
-        
+
         // Add event listeners to tabs
         document.querySelectorAll('.list-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -990,43 +985,43 @@ class EmailMarketingApp {
                 this.filterContacts();
             });
         });
-        
+
         // Update filter dropdown
         const filterList = document.getElementById('filter-list');
         filterList.innerHTML = '<option value="">Todas las listas</option>';
         this.contactLists.forEach(list => {
             filterList.innerHTML += `<option value="${list.id}">${list.name}</option>`;
         });
-        
+
         // Update bulk action dropdown
         const bulkListSelect = document.getElementById('bulk-list-select');
         bulkListSelect.innerHTML = '<option value="">Agregar a lista...</option>';
         this.contactLists.forEach(list => {
             bulkListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
         });
-        
+
         // Update import dropdown
         const importListSelect = document.getElementById('import-list-select');
         importListSelect.innerHTML = '<option value="">No agregar a ninguna lista</option>';
         this.contactLists.forEach(list => {
             importListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
         });
-        
+
         // Update contact form checkboxes
         this.updateContactListsCheckboxes();
-        
+
         // Update lists modal
         this.updateListsModal();
     }
     updateContactListsCheckboxes() {
         const container = document.getElementById('contact-lists-checkboxes');
         if (!container) return;
-        
+
         if (this.contactLists.length === 0) {
             container.innerHTML = '<p class="empty-state">No hay listas disponibles</p>';
             return;
         }
-        
+
         container.innerHTML = this.contactLists.map(list => `
             <div class="list-checkbox">
                 <input type="checkbox" id="list-${list.id}" value="${list.id}">
@@ -1037,7 +1032,7 @@ class EmailMarketingApp {
 
     updateListsModal() {
         const container = document.getElementById('lists-container');
-        
+
         if (this.contactLists.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -1047,7 +1042,7 @@ class EmailMarketingApp {
             `;
             return;
         }
-        
+
         container.innerHTML = this.contactLists.map(list => {
             const memberCount = this.contactListMembers.filter(m => m.list_id === list.id).length;
             return `
@@ -1082,7 +1077,7 @@ class EmailMarketingApp {
 
         this.contactLists.push(list);
         localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
-        
+
         this.loadContactLists();
         this.closeModal('list-form-modal');
         this.showToast('success', '¡Lista creada!', 'La lista se ha creado correctamente.');
@@ -1092,7 +1087,7 @@ class EmailMarketingApp {
         const searchTerm = document.getElementById('search-contacts').value.toLowerCase();
         const statusFilter = document.getElementById('filter-status').value;
         const listFilter = document.getElementById('filter-list').value;
-        
+
         let filteredContacts = [...this.contacts];
 
         // Filter by current tab (list)
@@ -1129,7 +1124,7 @@ class EmailMarketingApp {
 
     displayContacts(contacts) {
         const tbody = document.getElementById('contacts-tbody');
-        
+
         if (contacts.length === 0) {
             tbody.innerHTML = `
                 <tr class="empty-row">
@@ -1144,7 +1139,7 @@ class EmailMarketingApp {
 
         tbody.innerHTML = contacts.map(contact => {
             const contactLists = this.getContactLists(contact.id);
-            const listsHTML = contactLists.length > 0 
+            const listsHTML = contactLists.length > 0
                 ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
                 : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
 
@@ -1188,7 +1183,7 @@ class EmailMarketingApp {
         const listIds = this.contactListMembers
             .filter(m => m.contact_id === contactId)
             .map(m => m.list_id);
-        
+
         return this.contactLists.filter(list => listIds.includes(list.id));
     }
 
@@ -1197,14 +1192,14 @@ class EmailMarketingApp {
         const count = selectedCheckboxes.length;
         const bulkActions = document.getElementById('bulk-actions');
         const selectedCount = document.getElementById('selected-count');
-        
+
         if (count > 0) {
             bulkActions.style.display = 'block';
             selectedCount.textContent = `${count} contactos seleccionados`;
         } else {
             bulkActions.style.display = 'none';
         }
-        
+
         // Update select all checkbox
         const selectAll = document.getElementById('select-all-contacts');
         const totalCheckboxes = document.querySelectorAll('.contact-checkbox').length;
@@ -1228,14 +1223,14 @@ class EmailMarketingApp {
 
         const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
             .map(cb => parseInt(cb.value));
-        
+
         let added = 0;
         selectedContacts.forEach(contactId => {
             // Check if already in list
-            const exists = this.contactListMembers.some(m => 
+            const exists = this.contactListMembers.some(m =>
                 m.contact_id === contactId && m.list_id == listId
             );
-            
+
             if (!exists) {
                 this.contactListMembers.push({
                     id: Date.now() + Math.random(),
@@ -1250,7 +1245,7 @@ class EmailMarketingApp {
         localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
         this.loadContactLists();
         this.filterContacts();
-        
+
         this.showToast('success', 'Contactos agregados', `${added} contactos agregados a la lista.`);
     }
 
@@ -1262,15 +1257,15 @@ class EmailMarketingApp {
 
         const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
             .map(cb => parseInt(cb.value));
-        
-        this.contactListMembers = this.contactListMembers.filter(m => 
+
+        this.contactListMembers = this.contactListMembers.filter(m =>
             !(selectedContacts.includes(m.contact_id) && m.list_id == this.currentListId)
         );
 
         localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
         this.loadContactLists();
         this.filterContacts();
-        
+
         this.showToast('success', 'Contactos removidos', 'Contactos removidos de la lista.');
     }
 
@@ -1281,17 +1276,17 @@ class EmailMarketingApp {
 
         const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
             .map(cb => parseInt(cb.value));
-        
+
         this.contacts = this.contacts.filter(contact => !selectedContacts.includes(contact.id));
         this.contactListMembers = this.contactListMembers.filter(m => !selectedContacts.includes(m.contact_id));
 
         localStorage.setItem('contacts', JSON.stringify(this.contacts));
         localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
-        
+
         this.loadContactLists();
         this.filterContacts();
         this.updateStats();
-        
+
         this.showToast('success', 'Contactos eliminados', `${selectedContacts.length} contactos eliminados.`);
     }
 
@@ -1305,7 +1300,7 @@ class EmailMarketingApp {
             try {
                 const csv = e.target.result;
                 this.csvData = this.parseCSV(csv);
-                
+
                 if (this.csvData.length === 0) {
                     this.showToast('error', 'Archivo vacío', 'El archivo CSV está vacío o no tiene formato válido.');
                     return;
@@ -1366,11 +1361,11 @@ class EmailMarketingApp {
         // Update step indicators
         document.querySelectorAll('.import-steps .step').forEach(step => step.classList.remove('active'));
         document.querySelector(`[data-step="${this.currentImportStep}"]`).classList.add('active');
-        
+
         // Update step content
         document.querySelectorAll('.import-step-content').forEach(content => content.classList.remove('active'));
         document.getElementById(`import-step-${this.currentImportStep}`).classList.add('active');
-        
+
         // Update buttons
         document.getElementById('import-prev-step').style.display = this.currentImportStep > 1 ? 'inline-flex' : 'none';
         document.getElementById('import-next-step').style.display = this.currentImportStep < 2 ? 'inline-flex' : 'none';
@@ -1421,7 +1416,7 @@ class EmailMarketingApp {
                 created_at: new Date().toISOString(),
                 is_active: true
             };
-            
+
             this.contactLists.push(newList);
             localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
             targetListId = newList.id;
@@ -1498,15 +1493,15 @@ class EmailMarketingApp {
         if (confirm('¿Estás seguro de que quieres eliminar esta lista? Los contactos no se eliminarán.')) {
             this.contactLists = this.contactLists.filter(l => l.id !== id);
             this.contactListMembers = this.contactListMembers.filter(m => m.list_id !== id);
-            
+
             localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
             localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
-            
+
             // Reset to "all" if current list was deleted
             if (this.currentListId == id) {
                 this.currentListId = 'all';
             }
-            
+
             this.loadContactLists();
             this.filterContacts();
             this.showToast('success', 'Lista eliminada', 'La lista se ha eliminado correctamente.');
@@ -1558,6 +1553,6 @@ document.addEventListener('DOMContentLoaded', () => {
     emailApp.loadContacts(); // Carga la primera página de contactos
 
     // Listener para el campo de búsqueda
-  
+
 });
 
