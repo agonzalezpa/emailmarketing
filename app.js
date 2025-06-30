@@ -574,7 +574,8 @@ class EmailMarketingApp {
         try {
             const senders = await this.apiRequest('senders');
             const contacts = await this.apiRequest('contacts');
-            const activeContacts = contacts.contacts ? contacts.contacts.filter(c => c.status === 'active') : [];
+
+            const activeContacts = this.contacts ? this.contacts.filter(c => c.status === 'active') : [];
 
             if (senders.length === 0) {
                 this.showToast('warning', 'Sin remitentes', 'Primero debes configurar al menos un remitente.');
@@ -906,16 +907,22 @@ class EmailMarketingApp {
         try {
             const response = await this.apiRequest(`contacts?page=${page}&search=${encodeURIComponent(search)}`, 'GET');
             const { total, limit, data: contacts } = response;
-
+            this.contacts=contacts;
             if (contacts.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
             } else {
                 tableBody.innerHTML = contacts.map(contact => `
                     <tr>
                         <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
-                        <td>${this.escapeHTML(contact.name || '')}</td>
-                        <td>${this.escapeHTML(contact.email || '')}</td>
-                        <td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td>
+                        <td>${this.escapeHTML(contact.name || '-')}</td>
+                        <td>${this.escapeHTML(contact.email || '-')}</td>
+                        <td>${this.escapeHTML(contact.status)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
+                                <i class="fas fa-edit"></i>
+                            </button> 
+                         </td>
+                       <!--<td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td> -->
                     </tr>
                 `).join('');
             }
@@ -925,12 +932,12 @@ class EmailMarketingApp {
             tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
         }
     }
- /**
-     * Escapa caracteres HTML para prevenir ataques XSS.
-     * Esta función es crucial para la seguridad al renderizar datos del usuario.
-     * @param {string} str - La cadena de texto a escapar.
-     * @returns {string} - La cadena de texto segura.
-     */
+    /**
+        * Escapa caracteres HTML para prevenir ataques XSS.
+        * Esta función es crucial para la seguridad al renderizar datos del usuario.
+        * @param {string} str - La cadena de texto a escapar.
+        * @returns {string} - La cadena de texto segura.
+        */
     escapeHTML(str) {
         if (typeof str !== 'string') return '';
         const p = document.createElement('p');
