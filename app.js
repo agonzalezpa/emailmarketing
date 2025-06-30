@@ -20,7 +20,7 @@ class EmailMarketingApp {
         this.loadContacts();
         this.loadCampaigns();
         this.updateStats();
-       // this.loadContactLists();
+        // this.loadContactLists();
     }
 
 
@@ -905,25 +905,35 @@ class EmailMarketingApp {
             if (contacts.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
             } else {
-                /*tableBody.innerHTML = contacts.map(contact => `
-                    <tr>
-                        <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
-                        <td>${this.escapeHTML(contact.name || '-')}</td>
-                        <td>${this.escapeHTML(contact.email || '-')}</td>
-                        <td>${this.escapeHTML(contact.status)}</td>
-                        <td></td>
-                        <td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                         </td>
-                       
-                    </tr>
-                `).join('');*/
+                tableBody.innerHTML = contacts.map(contact => {
+                    const contactLists = this.getContactLists(contact.id);
+                    const listsHTML = contactLists.length > 0
+                        ? contactLists.map(list => `<span class="list-tag">${this.escapeHTML(list.name)}</span>`).join('')
+                        : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
+
+                    return `
+            <tr>
+                <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
+                <td>${this.escapeHTML(contact.name || '-')}</td>
+                <td>${this.escapeHTML(contact.email || '-')}</td>
+                <td>${this.escapeHTML(contact.status)}</td>
+                <td>
+                    <div class="contact-lists">
+                        ${listsHTML}
+                    </div>
+                </td>
+                <td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+                }).join('');
             }
             this.renderPagination(total, limit, page);
         } catch (error) {
