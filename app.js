@@ -20,7 +20,7 @@ class EmailMarketingApp {
         this.loadContacts();
         this.loadCampaigns();
         this.updateStats();
-        this.loadContactLists();
+       // this.loadContactLists();
     }
 
 
