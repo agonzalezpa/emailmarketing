@@ -482,7 +482,7 @@ class EmailMarketingApp {
                         <p><strong>Asunto:</strong> ${campaign.subject}</p>
                         <p><strong>Remitente:</strong> ${campaign.sender_name || 'N/A'}</p>
                         
-                        <p><strong>Enviados:</strong> ${campaign.total_sent || 0} de ${campaign.total_recipients || 0}destinatarios</p>
+                        <p><strong>Enviados:</strong> ${campaign.total_sent || 0} de ${campaign.total_recipients || 0} destinatarios</p>
                         <p><strong>Estado:</strong> ${campaign.status}</p>
                         <p><strong>Iniciada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
                         
@@ -900,7 +900,7 @@ class EmailMarketingApp {
         try {
             const response = await this.apiRequest(`contacts?page=${page}&search=${encodeURIComponent(search)}`, 'GET');
             const { total, limit, data: contacts } = response;
-            this.contacts=contacts;
+            this.contacts = contacts;
             if (contacts.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
             } else {
@@ -1023,10 +1023,10 @@ class EmailMarketingApp {
         });
 
         // Update contact form checkboxes
-       // this.updateContactListsCheckboxes();
+        // this.updateContactListsCheckboxes();
 
         // Update lists modal
-       // this.updateListsModal();
+        // this.updateListsModal();
     }
     updateContactListsCheckboxes() {
         const container = document.getElementById('contact-lists-checkboxes');
@@ -1167,8 +1167,13 @@ class EmailMarketingApp {
                         <span class="status-badge status-${contact.status}">
                             ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
                         </span>
-                    </td>                    
-                    
+                    </td>
+                    <td>
+                        <div class="contact-lists">
+                            ${listsHTML}
+                        </div>
+                    </td>
+                    <td>${new Date(contact.created_at).toLocaleDateString()}</td>
                     <td>
                         <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
                             <i class="fas fa-edit"></i>
