@@ -17,9 +17,9 @@ class EmailMarketingApp {
         this.setupEventListeners();
         this.loadDashboard();
         this.loadSenders();
-       this.loadContacts();
-       this.loadCampaigns();
-      this.updateStats();
+        this.loadContacts();
+        this.loadCampaigns();
+        this.updateStats();
     }
     
 
@@ -174,8 +174,8 @@ class EmailMarketingApp {
             createListBtn.style.display = 'none';
             tabContacts.classList.add('active');
             tabLists.classList.remove('active');
-           // this.loadContacts(1, this.currentSearch);
-            this.loadContacts();
+            this.loadContacts(1, this.currentSearch);
+            //this.loadContacts();
         }
     }
 
@@ -218,8 +218,7 @@ class EmailMarketingApp {
         }
     }
 
-    async testDatabaseConnection() {
-    
+    async testDatabaseConnection() {  
 
     try {
         this.showToast('info', 'Probando conexión', 'Verificando conexión a la base de datos...');
@@ -898,7 +897,37 @@ class EmailMarketingApp {
      loadContacts() {
         this.filterContacts();
     }
-    
+    async loadContacts(page = 1, search = '') {
+        this.currentPage = page;
+        this.currentSearch = search;
+        
+        const tableBody = document.getElementById('contacts-tbody');
+        if (!tableBody) return;
+        tableBody.innerHTML = '<tr><td colspan="4">Cargando contactos...</td></tr>';
+
+        try {
+            const endpoint = `getContacts&page=${page}&search=${encodeURIComponent(search)}`;
+            const response = await this.apiRequest(endpoint);
+            const { total, limit, data: contacts } = response;
+
+            if (contacts.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
+            } else {
+                tableBody.innerHTML = contacts.map(contact => `
+                    <tr>
+                        <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
+                        <td>${this.escapeHTML(contact.name)}</td>
+                        <td>${this.escapeHTML(contact.email)}</td>
+                        <td>${new Date(contact.created_at).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            }
+            this.renderPagination(total, limit, page);
+        } catch (error) {
+            console.error('Error al cargar contactos:', error);
+            tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
+        }
+    }
    
 
     /**
