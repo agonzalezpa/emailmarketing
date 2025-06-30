@@ -905,13 +905,13 @@ class EmailMarketingApp {
             if (contacts.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
             } else {
-                tableBody.innerHTML = contacts.map(contact => `
+                /*tableBody.innerHTML = contacts.map(contact => `
                     <tr>
                         <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
                         <td>${this.escapeHTML(contact.name || '-')}</td>
                         <td>${this.escapeHTML(contact.email || '-')}</td>
                         <td>${this.escapeHTML(contact.status)}</td>
-                        <td>${contact.lists.map(list => this.escapeHTML(list.name)).join(', ') || '-'}</td>
+                        <td></td>
                         <td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td>
                         <td>
                             <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
@@ -923,7 +923,7 @@ class EmailMarketingApp {
                          </td>
                        
                     </tr>
-                `).join('');
+                `).join('');*/
             }
             this.renderPagination(total, limit, page);
         } catch (error) {
