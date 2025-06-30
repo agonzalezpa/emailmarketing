@@ -371,7 +371,7 @@ class EmailMarketingAPI
     }
 
     // Contact methods
-    private function getContactsOLD()
+    private function getContacts()
     {
         $pdo = $this->getConnection();
         $search = $_GET['search'] ?? '';
@@ -422,7 +422,7 @@ class EmailMarketingAPI
 
     // En tu clase Api, reemplaza el método getContacts
 
-    private function getContacts()
+    private function getContactsNewest()
     {
         // Lee los parámetros de la URL para la paginación y búsqueda
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;

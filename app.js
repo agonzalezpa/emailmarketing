@@ -913,9 +913,9 @@ class EmailMarketingApp {
                 tableBody.innerHTML = contacts.map(contact => `
                     <tr>
                         <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
-                        <td>${this.escapeHTML(contact.name)}</td>
-                        <td>${this.escapeHTML(contact.email)}</td>
-                        <td>${new Date(contact.created_at).toLocaleDateString()}</td>
+                        <td>${this.escapeHTML(contact.name || '')}</td>
+                        <td>${this.escapeHTML(contact.email || '')}</td>
+                        <td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td>
                     </tr>
                 `).join('');
             }
@@ -925,7 +925,18 @@ class EmailMarketingApp {
             tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
         }
     }
-
+ /**
+     * Escapa caracteres HTML para prevenir ataques XSS.
+     * Esta función es crucial para la seguridad al renderizar datos del usuario.
+     * @param {string} str - La cadena de texto a escapar.
+     * @returns {string} - La cadena de texto segura.
+     */
+    escapeHTML(str) {
+        if (typeof str !== 'string') return '';
+        const p = document.createElement('p');
+        p.appendChild(document.createTextNode(str));
+        return p.innerHTML;
+    }
 
     /**
      * Dibuja los botones de la paginación
