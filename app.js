@@ -944,6 +944,7 @@ class EmailMarketingApp {
     renderPagination(total, limit, currentPage) {
         const paginationControls = document.getElementById('pagination-controls');
         const totalPages = Math.ceil(total / limit);
+        if (!paginationControls) return;
         paginationControls.innerHTML = '';
 
         if (totalPages <= 1) return;
