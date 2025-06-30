@@ -20,6 +20,7 @@ class EmailMarketingApp {
         this.loadContacts();
         this.loadCampaigns();
         this.updateStats();
+        this.loadContactLists();
     }
 
 
@@ -910,6 +911,8 @@ class EmailMarketingApp {
                         <td>${this.escapeHTML(contact.name || '-')}</td>
                         <td>${this.escapeHTML(contact.email || '-')}</td>
                         <td>${this.escapeHTML(contact.status)}</td>
+                        <td>${contact.lists.map(list => this.escapeHTML(list.name)).join(', ') || '-'}</td>
+                        <td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td>
                         <td>
                             <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
                             <i class="fas fa-edit"></i>
@@ -918,7 +921,7 @@ class EmailMarketingApp {
                             <i class="fas fa-trash"></i>
                         </button>
                          </td>
-                       <!--<td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td> -->
+                       
                     </tr>
                 `).join('');
             }

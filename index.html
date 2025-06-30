@@ -184,9 +184,9 @@
                                     <th><input type="checkbox" id="select-all-contacts"></th>
                                     <th>Nombre</th>
                                     <th>Email</th>
-                                    <th>Estado</th>
-                                   <!--<th>Fecha Agregado</th>--> 
-                                    <th>Listas</th>                                     
+                                    <th>Estado</th>                                   
+                                    <th>Listas</th> 
+                                    <th>Fecha Agregado</th>                                    
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -537,6 +537,27 @@ María García,maria@example.com,active</pre>
                 </div>
             </form>
         </div>
+    </div>
+        <!-- Ventana Modal para Crear Lista de Contactos -->
+    <div class="modal" id="list-form-modal">
+      <div class="modal-content">
+        <button class="modal-close" data-modal="list-form-modal" aria-label="Cerrar">&times;</button>
+        <h2>Crear Nueva Lista</h2>
+        <form id="list-form">
+          <div class="form-group">
+            <label for="list-name">Nombre de la lista</label>
+            <input type="text" id="list-name" name="name" required placeholder="Ej: Clientes VIP">
+          </div>
+          <div class="form-group">
+            <label for="list-description">Descripción</label>
+            <textarea id="list-description" name="description" placeholder="Descripción opcional"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">Crear Lista</button>
+            <button type="button" class="btn btn-outline modal-close" data-modal="list-form-modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div class="toast-container" id="toast-container"></div>
