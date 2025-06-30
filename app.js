@@ -180,7 +180,6 @@ class EmailMarketingApp {
     }
 
 
-
     async apiRequest(endpoint, method = 'GET', data = null) {
         try {
             const options = {
@@ -241,7 +240,6 @@ class EmailMarketingApp {
             this.showToast('error', 'Error de conexión', 'No se pudo verificar la conexión a la base de datos.');
         }
     }
-
 
     switchSection(section) {
         // Update navigation
@@ -463,8 +461,6 @@ class EmailMarketingApp {
         }
     }
 
-
-
     async loadCampaigns() {
         try {
             const campaigns = await this.apiRequest('campaigns');
@@ -515,7 +511,6 @@ class EmailMarketingApp {
         `;
         }
     }
-
 
     async loadDashboard() {
         try {
@@ -574,9 +569,7 @@ class EmailMarketingApp {
         try {
             const senders = await this.apiRequest('senders');
             const contacts = await this.apiRequest('contacts');
-
             const activeContacts = this.contacts ? this.contacts.filter(c => c.status === 'active') : [];
-
             if (senders.length === 0) {
                 this.showToast('warning', 'Sin remitentes', 'Primero debes configurar al menos un remitente.');
                 return;
