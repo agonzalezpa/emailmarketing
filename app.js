@@ -912,8 +912,11 @@ class EmailMarketingApp {
                         <td>${this.escapeHTML(contact.status)}</td>
                         <td>
                             <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
-                                <i class="fas fa-edit"></i>
-                            </button> 
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
                          </td>
                        <!--<td>${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : ''}</td> -->
                     </tr>
@@ -1020,10 +1023,10 @@ class EmailMarketingApp {
         });
 
         // Update contact form checkboxes
-        this.updateContactListsCheckboxes();
+       // this.updateContactListsCheckboxes();
 
         // Update lists modal
-        this.updateListsModal();
+       // this.updateListsModal();
     }
     updateContactListsCheckboxes() {
         const container = document.getElementById('contact-lists-checkboxes');
@@ -1164,13 +1167,8 @@ class EmailMarketingApp {
                         <span class="status-badge status-${contact.status}">
                             ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
                         </span>
-                    </td>
-                    <td>
-                        <div class="contact-lists">
-                            ${listsHTML}
-                        </div>
-                    </td>
-                    <td>${new Date(contact.created_at).toLocaleDateString()}</td>
+                    </td>                    
+                    
                     <td>
                         <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
                             <i class="fas fa-edit"></i>
