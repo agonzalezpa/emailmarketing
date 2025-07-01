@@ -924,7 +924,7 @@ class EmailMarketingApp {
                     const listsHTML = contactLists.length > 0
                         ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
                         : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
-    
+
                     return `
                 <tr>
                     <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
@@ -1279,7 +1279,10 @@ class EmailMarketingApp {
             this.showToast('warning', 'Selecciona contactos', 'Por favor selecciona al menos un contacto.');
             return;
         }
-
+        console.log('bulkAddToList payload:', {
+            list_id: parseInt(listId),
+            contact_ids: selectedContacts
+        });
         try {
             // Llama a la API para agregar contactos a la lista
             await this.apiRequest('contact-list-members/bulk-add', 'POST', {
