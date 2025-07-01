@@ -378,54 +378,6 @@ class EmailMarketingAPI
 
     // Contact methods
 
-    private function getContactsOLD()
-    {
-        // Lee los parámetros de la URL para la paginación y búsqueda
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $limit = 15; // Define cuántos contactos mostrar por página
-        $search = $_GET['search'] ?? '';
-        $offset = ($page - 1) * $limit;
-
-        $pdo = $this->getConnection();
-
-        $whereClause = "";
-        $params = [];
-        if (!empty($search)) {
-            // Cláusula WHERE para buscar por nombre o email
-            $whereClause = "WHERE name LIKE :search OR email LIKE :search";
-            $params[':search'] = "%$search%";
-        }
-
-        // 1. Obtener el número TOTAL de contactos que coinciden con la búsqueda
-        $totalSql = "SELECT COUNT(*) FROM contacts $whereClause";
-        $totalStmt = $pdo->prepare($totalSql);
-        $totalStmt->execute($params);
-        $total = $totalStmt->fetchColumn();
-
-        // 2. Obtener solo los contactos para la página actual
-        $dataSql = "SELECT * FROM contacts $whereClause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
-        $dataStmt = $pdo->prepare($dataSql);
-
-        // Asignar los valores a los parámetros de la consulta
-        if (!empty($search)) {
-            $dataStmt->bindValue(':search', "%$search%", PDO::PARAM_STR);
-        }
-        $dataStmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-
-        $dataStmt->execute();
-        $contacts = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // 3. Devolver una respuesta estructurada con los datos y la información de paginación
-        $response = [
-            'total' => (int)$total,
-            'page' => $page,
-            'limit' => $limit,
-            'data' => $contacts
-        ];
-
-        $this->sendResponse($response);
-    }
 
     private function getContacts()
     {
@@ -491,7 +443,7 @@ class EmailMarketingAPI
     private function createContact()
     {
         $data = $this->getJsonInput();
-
+        error_log(print_r($data, true));
         $required = ['name', 'email'];
         $this->validateRequiredFields($data, $required);
 
@@ -1113,100 +1065,7 @@ class EmailMarketingAPI
         }
     }
 
-    //se envian todos los correoas al momento pero no es bueno cuando hay miles de correo puede saturar el servidor
-    private function handleSendCampaignOLD($campaignId)
-    {
-        if (!$campaignId) {
-            $this->sendError(400, 'Campaign ID required');
-        }
 
-        $pdo = $this->getConnection();
-
-        // Get campaign
-        $stmt = $pdo->prepare("
-            SELECT c.*, s.* FROM campaigns c 
-            JOIN senders s ON c.sender_id = s.id 
-            WHERE c.id = ? AND c.status = 'draft'
-        ");
-        $stmt->execute([$campaignId]);
-        $campaign = $stmt->fetch();
-
-        if (!$campaign) {
-            $this->sendError(400, 'Campaign not found or already sent');
-        }
-
-        // Get active contacts
-        $stmt = $pdo->prepare("SELECT * FROM contacts WHERE status = 'active'");
-        $stmt->execute();
-        $contacts = $stmt->fetchAll();
-
-        if (empty($contacts)) {
-            $this->sendError(400, 'No active contacts found');
-        }
-
-        // Update campaign status
-        $stmt = $pdo->prepare("
-            UPDATE campaigns SET status = 'sending', total_recipients = ?, sent_at = CURRENT_TIMESTAMP 
-            WHERE id = ?
-        ");
-        $stmt->execute([count($contacts), $campaignId]);
-
-        // Create campaign recipients
-        $stmt = $pdo->prepare("
-            INSERT INTO campaign_recipients (campaign_id, contact_id) VALUES (?, ?)
-        ");
-
-        foreach ($contacts as $contact) {
-            $stmt->execute([$campaignId, $contact['id']]);
-        }
-
-        // Send emails (in a real implementation, this should be done via a queue)
-        $sent = 0;
-        $errors = [];
-
-        foreach ($contacts as $contact) {
-            $result = $this->sendEmail(
-                $campaign,
-                $contact['email'],
-                $contact['name'],
-                $campaign['subject'],
-                $campaign['html_content']
-            );
-
-            if ($result['success']) {
-                $sent++;
-                // Update recipient status
-                $pdo->prepare("
-                    UPDATE campaign_recipients 
-                    SET status = 'sent', sent_at = CURRENT_TIMESTAMP 
-                    WHERE campaign_id = ? AND contact_id = ?
-                ")->execute([$campaignId, $contact['id']]);
-            } else {
-                $errors[] = "Failed to send to {$contact['email']}: {$result['error']}";
-            }
-        }
-
-        // Update campaign final status
-        $finalStatus = $sent > 0 ? 'sent' : 'failed';
-        $stmt = $pdo->prepare("
-            UPDATE campaigns SET status = ?, sent_count = ? WHERE id = ?
-        ");
-        $stmt->execute([$finalStatus, $sent, $campaignId]);
-
-        // Update campaign stats if procedure exists
-        try {
-            $pdo->prepare("CALL UpdateCampaignStats(?)")->execute([$campaignId]);
-        } catch (Exception $e) {
-            // Ignore if procedure doesn't exist
-        }
-
-        $this->sendResponse([
-            'message' => 'Campaign sent',
-            'sent' => $sent,
-            'total' => count($contacts),
-            'errors' => $errors
-        ]);
-    }
     //pone la campaña en estado enviandodese para que el CRON envie poco a poco los correos y evitar que se consideren spam o se bloquee el envio cuando son miles de correos
     private function handleSendCampaign($campaignId)
     {

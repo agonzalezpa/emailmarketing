@@ -331,7 +331,7 @@ class EmailMarketingApp {
         if (selectedLists.length > 0) {
             contact.list_ids = selectedLists;
         }
-
+        console.log('Contacto a enviar:', contact);
         try {
             // Crear el contacto y asociarlo a las listas seleccionadas
             await this.apiRequest('contacts', 'POST', contact);
