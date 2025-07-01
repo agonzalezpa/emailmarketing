@@ -922,7 +922,7 @@ class EmailMarketingApp {
             if (contacts.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
             } else {
-                 tbody.innerHTML = contacts.map(contact => {
+                 tableBody.innerHTML = contacts.map(contact => {
             const contactLists = this.getContactLists(contact.id);
             const listsHTML = contactLists.length > 0
                 ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
