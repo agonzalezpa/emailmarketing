@@ -1104,13 +1104,15 @@ class EmailMarketingApp {
         // Add event listeners to tabs
         document.querySelectorAll('.list-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
-                /*this.currentListId = e.currentTarget.dataset.list;
-                this.loadContactLists();
-                this.filterContacts();*/
-                const listId = e.currentTarget.dataset.list;
-                this.currentListId = listId;
-                const page = this.listPages[this.currentListId] || 1;
-                this.loadContacts(page, this.currentSearch);
+            // Quitar 'active' de todos los tabs
+            document.querySelectorAll('.list-tab').forEach(t => t.classList.remove('active'));
+            // Poner 'active' solo al tab clickeado
+            e.currentTarget.classList.add('active');
+            // Cambiar la lista actual y recargar contactos
+            const listId = e.currentTarget.dataset.list;
+            this.currentListId = listId;
+            const page = this.listPages[this.currentListId] || 1;
+            this.loadContacts(page, this.currentSearch);
             });
         });
 
