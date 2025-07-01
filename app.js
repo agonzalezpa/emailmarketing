@@ -971,7 +971,7 @@ class EmailMarketingApp {
 
         // Botón "Anterior"
         paginationControls.innerHTML += `
-            <button onclick="emailApp.loadContacts(${currentPage - 1}, emailApp.currentSearch)" ${currentPage === 1 ? 'disabled' : ''}>
+            <button class="btn btn-outline" onclick="emailApp.loadContacts(${currentPage - 1}, emailApp.currentSearch)" ${currentPage === 1 ? 'disabled' : ''}>
                 &laquo; Anterior
             </button>`;
 
@@ -980,7 +980,7 @@ class EmailMarketingApp {
 
         // Botón "Siguiente"
         paginationControls.innerHTML += `
-            <button onclick="emailApp.loadContacts(${currentPage + 1}, emailApp.currentSearch)" ${currentPage === totalPages ? 'disabled' : ''}>
+            <button class="btn btn-success" onclick="emailApp.loadContacts(${currentPage + 1}, emailApp.currentSearch)" ${currentPage === totalPages ? 'disabled' : ''}>
                 Siguiente &raquo;
             </button>`;
     }
