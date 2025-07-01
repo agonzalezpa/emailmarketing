@@ -1538,22 +1538,24 @@ class EmailMarketingApp {
         this.updateImportStep();
     }
 
-    deleteList(id) {
+    async deleteList(id) {
         if (confirm('¿Estás seguro de que quieres eliminar esta lista? Los contactos no se eliminarán.')) {
-            this.contactLists = this.contactLists.filter(l => l.id !== id);
-            this.contactListMembers = this.contactListMembers.filter(m => m.list_id !== id);
+            try {
+                await this.apiRequest(`contact-lists/${id}`, 'DELETE');
+                await this.loadContactListsFromAPI();
+                await this.loadContactListMembersFromAPI();
 
-            localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
-            localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
+                // Reset to "all" if current list was deleted
+                if (this.currentListId == id) {
+                    this.currentListId = 'all';
+                }
 
-            // Reset to "all" if current list was deleted
-            if (this.currentListId == id) {
-                this.currentListId = 'all';
+                this.loadContactLists();
+                this.filterContacts();
+                this.showToast('success', 'Lista eliminada', 'La lista se ha eliminado correctamente.');
+            } catch (error) {
+                // Error already handled in apiRequest
             }
-
-            this.loadContactLists();
-            this.filterContacts();
-            this.showToast('success', 'Lista eliminada', 'La lista se ha eliminado correctamente.');
         }
     }
 
