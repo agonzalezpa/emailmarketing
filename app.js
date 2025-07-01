@@ -998,8 +998,9 @@ class EmailMarketingApp {
             </button>`;
     }
 
-    loadContactLists() {
+    async loadContactLists() {
         // Update lists tabs
+        const stats = await this.apiRequest('stats');
         const listsTabs = document.getElementById('lists-tabs');
         const allContactsCount = stats.total_contacts;
 
