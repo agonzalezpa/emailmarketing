@@ -678,10 +678,16 @@ class EmailMarketingApp {
         document.getElementById('send-campaign').style.display = this.currentStep === 3 ? 'inline-flex' : 'none';
     }
 
-    updateCampaignSummary() {
+    async updateCampaignSummary() {
         const name = document.getElementById('campaign-name').value;
         const senderId = document.getElementById('campaign-sender').value;
-        const sender = this.senders.find(s => s.id == senderId);
+        let sender = null;
+        try {
+            const senders = await this.apiRequest('senders');
+            sender = senders.find(s => s.id == senderId);
+        } catch (e) {
+            sender = null;
+        }
         const subject = document.getElementById('campaign-subject').value;
         const activeContacts = this.contacts.filter(c => c.status === 'active').length;
 
@@ -856,12 +862,6 @@ class EmailMarketingApp {
         }
     }
 
-    editSender(id) {
-        // This would open the sender modal with the sender data pre-filled
-        this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
-    }
-
-
     showToast(type, title, message) {
         const toastContainer = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -903,9 +903,6 @@ class EmailMarketingApp {
     }
 
     ///gestion de contactos
-    loadContacts() {
-        this.filterContacts();
-    }
     async loadContacts(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
@@ -927,7 +924,7 @@ class EmailMarketingApp {
                     const listsHTML = contactLists.length > 0
                         ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
                         : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
-
+    
                     return `
                 <tr>
                     <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
@@ -1268,7 +1265,7 @@ class EmailMarketingApp {
         this.updateBulkActions();
     }
 
-    bulkAddToList() {
+    async bulkAddToList() {
         const listId = document.getElementById('bulk-list-select').value;
         if (!listId) {
             this.showToast('warning', 'Selecciona una lista', 'Por favor selecciona una lista.');
@@ -1278,29 +1275,27 @@ class EmailMarketingApp {
         const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
             .map(cb => parseInt(cb.value));
 
-        let added = 0;
-        selectedContacts.forEach(contactId => {
-            // Check if already in list
-            const exists = this.contactListMembers.some(m =>
-                m.contact_id === contactId && m.list_id == listId
-            );
+        if (selectedContacts.length === 0) {
+            this.showToast('warning', 'Selecciona contactos', 'Por favor selecciona al menos un contacto.');
+            return;
+        }
 
-            if (!exists) {
-                this.contactListMembers.push({
-                    id: Date.now() + Math.random(),
-                    contact_id: contactId,
-                    list_id: parseInt(listId),
-                    added_at: new Date().toISOString()
-                });
-                added++;
-            }
-        });
+        try {
+            // Llama a la API para agregar contactos a la lista
+            await this.apiRequest('contact-list-members/bulk-add', 'POST', {
+                list_id: parseInt(listId),
+                contact_ids: selectedContacts
+            });
 
-        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
-        this.loadContactLists();
-        this.filterContacts();
+            // Recarga los datos desde la API
+            await this.loadContactListMembersFromAPI();
+            this.loadContactLists();
+            this.filterContacts();
 
-        this.showToast('success', 'Contactos agregados', `${added} contactos agregados a la lista.`);
+            this.showToast('success', 'Contactos agregados', `${selectedContacts.length} contactos agregados a la lista.`);
+        } catch (error) {
+            // Error ya manejado en apiRequest
+        }
     }
 
     bulkRemoveFromList() {
@@ -1566,15 +1561,6 @@ class EmailMarketingApp {
 
     editList(id) {
         this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
-    }
-
-    deleteSender(id) {
-        if (confirm('¿Estás seguro de que quieres eliminar este remitente?')) {
-            this.senders = this.senders.filter(s => s.id !== id);
-            localStorage.setItem('senders', JSON.stringify(this.senders));
-            this.loadSenders();
-            this.showToast('success', 'Remitente eliminado', 'El remitente se ha eliminado correctamente.');
-        }
     }
 
     deleteContact(id) {
