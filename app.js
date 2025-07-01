@@ -24,6 +24,7 @@ class EmailMarketingApp {
         this.loadCampaigns();
         this.updateStats();
         this.loadContactLists();
+        this.updateListsModal()
     }
 
 
