@@ -953,6 +953,12 @@ class EmailMarketingApp {
             `;
                 }).join('');
             }
+            // Add event listeners to checkboxes
+            document.querySelectorAll('.contact-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    this.updateBulkActions();
+                });
+            });
             this.renderPagination(total, limit, page);
         } catch (error) {
             console.error('Error al cargar contactos:', error);
