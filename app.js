@@ -323,19 +323,18 @@ class EmailMarketingApp {
         const formData = new FormData(e.target);
         const contact = Object.fromEntries(formData.entries());
 
-        // Obtener listas seleccionadas
+        // Recoge los checkboxes seleccionados manualmente
         const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes input[name="lists"]:checked'))
             .map(cb => parseInt(cb.value));
 
-        // Agregar list_ids al objeto contact si hay listas seleccionadas
         if (selectedLists.length > 0) {
             contact.list_ids = selectedLists;
         }
-        console.log('Contacto a enviar:', contact);
-        try {
-            // Crear el contacto y asociarlo a las listas seleccionadas
-            await this.apiRequest('contacts', 'POST', contact);
 
+        console.log('Contacto a enviar:', contact); // Debe mostrar list_ids si hay listas seleccionadas
+
+        try {
+            await this.apiRequest('contacts', 'POST', contact);
             this.closeModal('contact-modal');
             this.showToast('success', 'Contacto creado', 'El contacto se ha creado correctamente.');
             this.loadContacts();
@@ -925,68 +924,7 @@ class EmailMarketingApp {
         </div>
     `).join('');
     }
-    /*async loadContactsOLD(page = 1, search = '') {
-        this.currentPage = page;
-        this.currentSearch = search;
-        const tableBody = document.getElementById('contacts-tbody');
-        if (!tableBody) return;
-        tableBody.innerHTML = '<tr><td colspan="4">Cargando contactos...</td></tr>';
-        try {
-            // Cargar listas y miembros desde la base de datos
-            await this.loadContactListsFromAPI();
-            await this.loadContactListMembersFromAPI();
-            const response = await this.apiRequest(`contacts?page=${page}&search=${encodeURIComponent(search)}`, 'GET');
-            const { total, limit, data: contacts } = response;
-            this.contacts = contacts;
-            if (contacts.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
-            } else {
-                tableBody.innerHTML = contacts.map(contact => {
-                    const contactLists = this.getContactLists(contact.id);
-                    const listsHTML = contactLists.length > 0
-                        ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
-                        : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
 
-                    return `
-                <tr>
-                    <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
-                    <td>${contact.name ? contact.name : '-'}</td>
-                    <td>${contact.email}</td>
-                    <td>
-                        <span class="status-badge status-${contact.status}">
-                            ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="contact-lists">
-                            ${listsHTML}
-                        </div>
-                    </td>
-                    <td>${new Date(contact.created_at).toLocaleDateString()}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-                }).join('');
-            }
-            // Add event listeners to checkboxes
-            document.querySelectorAll('.contact-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    this.updateBulkActions();
-                });
-            });
-            this.renderPagination(total, limit, page);
-        } catch (error) {
-            console.error('Error al cargar contactos:', error);
-            tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
-        }
-    }*/
     async loadContacts(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
@@ -1179,11 +1117,11 @@ class EmailMarketingApp {
         }
 
         container.innerHTML = this.contactLists.map(list => `
-            <div class="list-checkbox">
-                <input type="checkbox" id="list-${list.id}" value="${list.id}">
-                <label for="list-${list.id}">${list.name}</label>
-            </div>
-        `).join('');
+        <div class="list-checkbox">
+            <input type="checkbox" id="list-${list.id}" value="${list.id}" name="lists">
+            <label for="list-${list.id}">${list.name}</label>
+        </div>
+    `).join('');
     }
 
     updateListsModal() {
