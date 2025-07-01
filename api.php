@@ -873,27 +873,50 @@ class EmailMarketingAPI
         }
     }
 
-    private function addContactToList()
-    {
-        $data = $this->getJsonInput();
-        if (empty($data['list_id']) || empty($data['contact_ids'])) {
-            $this->sendError(400, 'list_id and contact_ids are required');
-        }
-
-        $pdo = $this->getConnection();
-
-        // Check if already exists
-        $stmt = $pdo->prepare("SELECT id FROM contact_list_members WHERE list_id = ? AND contact_id = ?");
-        $stmt->execute([$data['list_id'], $data['contact_ids']]);
-        if ($stmt->fetch()) {
-            $this->sendError(400, 'Contact already in list');
-        }
-
-        $stmt = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
-        $stmt->execute([$data['list_id'], $data['contact_ids']]);
-
-        $this->sendResponse(['message' => 'Contact added to list']);
+    <?php
+private function addContactToList()
+{
+    $data = $this->getJsonInput();
+    if (empty($data['list_id']) || empty($data['contact_ids']) || !is_array($data['contact_ids'])) {
+        $this->sendError(400, 'list_id and contact_ids are required');
     }
+
+    $pdo = $this->getConnection();
+    $inserted = 0;
+    $errors = [];
+
+    $stmtCheck = $pdo->prepare("SELECT id FROM contact_list_members WHERE list_id = ? AND contact_id = ?");
+    $stmtInsert = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+
+    foreach ($data['contact_ids'] as $contactId) {
+        // Verifica que el contacto exista
+        $stmtContact = $pdo->prepare("SELECT id FROM contacts WHERE id = ?");
+        $stmtContact->execute([$contactId]);
+        if (!$stmtContact->fetch()) {
+            $errors[] = "Contacto no existe: $contactId";
+            continue;
+        }
+
+        // Verifica si ya existe la relación
+        $stmtCheck->execute([$data['list_id'], $contactId]);
+        if ($stmtCheck->fetch()) {
+            $errors[] = "Contacto $contactId ya está en la lista";
+            continue;
+        }
+
+        try {
+            $stmtInsert->execute([$data['list_id'], $contactId]);
+            $inserted++;
+        } catch (Exception $e) {
+            $errors[] = "Error al agregar contacto $contactId: " . $e->getMessage();
+        }
+    }
+
+    $this->sendResponse([
+        'message' => "$inserted contactos agregados a la lista",
+        'errors' => $errors
+    ]);
+}
 
     private function removeContactFromList()
     {
