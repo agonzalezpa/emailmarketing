@@ -327,24 +327,20 @@ class EmailMarketingApp {
         const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes input[name="lists"]:checked'))
             .map(cb => parseInt(cb.value));
 
-        try {
-            // Crear el contacto
-            const newContact = await this.apiRequest('contacts', 'POST', contact);
+        // Agregar list_ids al objeto contact si hay listas seleccionadas
+        if (selectedLists.length > 0) {
+            contact.list_ids = selectedLists;
+        }
 
-            // Si hay listas seleccionadas, agregar el contacto a esas listas
-            if (selectedLists.length > 0) {
-                await this.apiRequest('contact-list-members', 'POST', {
-                    list_id: null, // No se usa en este caso
-                    contact_ids: [newContact.id],
-                    list_ids: selectedLists
-                });
-            }
+        try {
+            // Crear el contacto y asociarlo a las listas seleccionadas
+            await this.apiRequest('contacts', 'POST', contact);
 
             this.closeModal('contact-modal');
             this.showToast('success', 'Contacto creado', 'El contacto se ha creado correctamente.');
             this.loadContacts();
         } catch (error) {
-             this.showToast('error', 'Error al crear contacto', error.message);
+            this.showToast('error', 'Error al crear contacto', error.message);
         }
     }
 
