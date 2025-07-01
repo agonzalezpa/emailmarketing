@@ -172,36 +172,6 @@ class EmailMarketingApp {
 
     // --- NUEVOS MÉTODOS Y MÉTODOS ACTUALIZADOS ---filter
 
-    /**
-     * Cambia entre la vista de 'Contactos' y 'Listas'
-     
-    switchView(view) {
-        this.currentView = view;
-        const contactsView = document.getElementById('contacts-view');
-        const listsView = document.getElementById('lists-view');
-        const createListBtn = document.getElementById('create-list-btn');
-        const tabContacts = document.getElementById('tab-contacts');
-        const tabLists = document.getElementById('tab-lists');
-
-        if (view === 'lists') {
-            contactsView.style.display = 'none';
-            listsView.style.display = 'block';
-            createListBtn.style.display = 'inline-block';
-            tabContacts.classList.remove('active');
-            tabLists.classList.add('active');
-            this.loadLists();
-        } else { // 'contacts'
-            contactsView.style.display = 'block';
-            listsView.style.display = 'none';
-            createListBtn.style.display = 'none';
-            tabContacts.classList.add('active');
-            tabLists.classList.remove('active');
-            //this.loadContacts(1, "");
-            const page = this.listPages[this.currentListId] || 1;
-            this.loadContacts(page, this.currentSearch);
-        }
-    }*/
-
 
     async apiRequest(endpoint, method = 'GET', data = null) {
         try {
@@ -1372,7 +1342,7 @@ class EmailMarketingApp {
         this.showToast('success', 'Contactos removidos', 'Contactos removidos de la lista.');
     }
 
-    bulkDeleteContacts() {
+    async bulkDeleteContacts() {
         if (!confirm('¿Estás seguro de que quieres eliminar los contactos seleccionados?')) {
             return;
         }
@@ -1380,14 +1350,19 @@ class EmailMarketingApp {
         const selectedContacts = Array.from(document.querySelectorAll('.contact-checkbox:checked'))
             .map(cb => parseInt(cb.value));
 
-        this.contacts = this.contacts.filter(contact => !selectedContacts.includes(contact.id));
-        this.contactListMembers = this.contactListMembers.filter(m => !selectedContacts.includes(m.contact_id));
+        // Elimina en el backend uno por uno
+        for (const contactId of selectedContacts) {
+            try {
+                await this.apiRequest(`contacts/${contactId}`, 'DELETE');
+            } catch (error) {
+                // Puedes mostrar un error o continuar
+            }
+        }
 
-        localStorage.setItem('contacts', JSON.stringify(this.contacts));
-        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
-
+        // Recarga datos desde la API
+        await this.loadContacts();
+        await this.loadContactListMembersFromAPI();
         this.loadContactLists();
-        this.filterContacts();
         this.updateStats();
 
         this.showToast('success', 'Contactos eliminados', `${selectedContacts.length} contactos eliminados.`);
