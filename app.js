@@ -1001,7 +1001,7 @@ class EmailMarketingApp {
     loadContactLists() {
         // Update lists tabs
         const listsTabs = document.getElementById('lists-tabs');
-        const allContactsCount = this.contacts.length;
+        const allContactsCount = stats.total_contacts;
 
         let tabsHTML = `
             <button class="list-tab ${this.currentListId === 'all' ? 'active' : ''}" data-list="all">
