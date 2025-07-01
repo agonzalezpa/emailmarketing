@@ -889,7 +889,7 @@ class EmailMarketingAPI
             $this->sendError(400, 'Contact already in list');
         }
 
-        $stmt = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_ids) VALUES (?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
         $stmt->execute([$data['list_id'], $data['contact_ids']]);
 
         $this->sendResponse(['message' => 'Contact added to list']);
