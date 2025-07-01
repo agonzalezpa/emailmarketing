@@ -295,6 +295,7 @@ class EmailMarketingApp {
         }
     }
 
+
     async handleSenderSubmit(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -403,7 +404,13 @@ class EmailMarketingApp {
             // Error already handled in apiRequest
         }
     }
+    async loadContactListsFromAPI() {
+        this.contactLists = await this.apiRequest('contact-lists');
+    }
 
+    async loadContactListMembersFromAPI() {
+        this.contactListMembers = await this.apiRequest('contact-list-members');
+    }
     async loadSenders() {
         try {
             const senders = await this.apiRequest('senders');
@@ -903,6 +910,9 @@ class EmailMarketingApp {
         if (!tableBody) return;
         tableBody.innerHTML = '<tr><td colspan="4">Cargando contactos...</td></tr>';
         try {
+            // Cargar listas y miembros desde la base de datos
+            await this.loadContactListsFromAPI();
+            await this.loadContactListMembersFromAPI();
             const response = await this.apiRequest(`contacts?page=${page}&search=${encodeURIComponent(search)}`, 'GET');
             const { total, limit, data: contacts } = response;
             this.contacts = contacts;
@@ -971,7 +981,7 @@ class EmailMarketingApp {
 
         // Botón "Anterior"
         paginationControls.innerHTML += `
-            <button class="btn btn-outline" onclick="emailApp.loadContacts(${currentPage - 1}, emailApp.currentSearch)" ${currentPage === 1 ? 'disabled' : ''}>
+            <button class="btn btn-success" onclick="emailApp.loadContacts(${currentPage - 1}, emailApp.currentSearch)" ${currentPage === 1 ? 'disabled' : ''}>
                 &laquo; Anterior
             </button>`;
 
@@ -1040,10 +1050,10 @@ class EmailMarketingApp {
         });
 
         // Update contact form checkboxes
-        // this.updateContactListsCheckboxes();
+        this.updateContactListsCheckboxes();
 
         // Update lists modal
-        // this.updateListsModal();
+        this.updateListsModal();
     }
     updateContactListsCheckboxes() {
         const container = document.getElementById('contact-lists-checkboxes');

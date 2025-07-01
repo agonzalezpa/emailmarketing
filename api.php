@@ -107,6 +107,12 @@ class EmailMarketingAPI
                 case 'stats':
                     $this->handleStats();
                     break;
+                case 'contact-lists':
+                    $this->handleContactLists($method, $id);
+                    break;
+                case 'contact-list-members':
+                    $this->handleContactListMembers($method, $id);
+                    break;
                 default:
                     $this->sendError(404, 'Endpoint not found');
             }
@@ -758,6 +764,160 @@ class EmailMarketingAPI
             $this->sendError(500, 'Failed to read Excel file: ' . $e->getMessage());
         }
     }
+
+    // Métodos para gestionar listas de contactos
+    private function handleContactLists($method, $id)
+    {
+        switch ($method) {
+            case 'GET':
+                if ($id) {
+                    $this->getContactList($id);
+                } else {
+                    $this->getContactLists();
+                }
+                break;
+            case 'POST':
+                $this->createContactList();
+                break;
+            case 'PUT':
+                $this->updateContactList($id);
+                break;
+            case 'DELETE':
+                $this->deleteContactList($id);
+                break;
+            default:
+                $this->sendError(405, 'Method not allowed');
+        }
+    }
+
+    private function getContactLists()
+    {
+        $pdo = $this->getConnection();
+        $stmt = $pdo->query("SELECT * FROM contact_lists ORDER BY created_at DESC");
+        $lists = $stmt->fetchAll();
+        $this->sendResponse($lists);
+    }
+
+    private function getContactList($id)
+    {
+        $pdo = $this->getConnection();
+        $stmt = $pdo->prepare("SELECT * FROM contact_lists WHERE id = ?");
+        $stmt->execute([$id]);
+        $list = $stmt->fetch();
+        if (!$list) {
+            $this->sendError(404, 'List not found');
+        }
+        $this->sendResponse($list);
+    }
+
+    private function createContactList()
+    {
+        $data = $this->getJsonInput();
+        $required = ['name'];
+        $this->validateRequiredFields($data, $required);
+
+        $pdo = $this->getConnection();
+        $stmt = $pdo->prepare("INSERT INTO contact_lists (name, description) VALUES (?, ?)");
+        $stmt->execute([
+            $data['name'],
+            $data['description'] ?? null
+        ]);
+        $listId = $pdo->lastInsertId();
+        $this->sendResponse(['id' => $listId, 'message' => 'List created successfully']);
+    }
+
+    private function updateContactList($id)
+    {
+        if (!$id) {
+            $this->sendError(400, 'List ID required');
+        }
+        $data = $this->getJsonInput();
+        $pdo = $this->getConnection();
+        $stmt = $pdo->prepare("UPDATE contact_lists SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([
+            $data['name'],
+            $data['description'] ?? null,
+            $id
+        ]);
+        $this->sendResponse(['message' => 'List updated successfully']);
+    }
+
+    private function deleteContactList($id)
+    {
+        if (!$id) {
+            $this->sendError(400, 'List ID required');
+        }
+        $pdo = $this->getConnection();
+        $stmt = $pdo->prepare("DELETE FROM contact_lists WHERE id = ?");
+        $stmt->execute([$id]);
+        // Opcional: eliminar miembros de la lista también
+        $pdo->prepare("DELETE FROM contact_list_members WHERE list_id = ?")->execute([$id]);
+        $this->sendResponse(['message' => 'List deleted successfully']);
+    }
+
+    // Métodos para gestionar miembros de listas
+    private function handleContactListMembers($method, $id)
+    {
+        switch ($method) {
+            case 'GET':
+                $this->getContactListMembers();
+                break;
+            case 'POST':
+                $this->addContactToList();
+                break;
+            case 'DELETE':
+                $this->removeContactFromList();
+                break;
+            default:
+                $this->sendError(405, 'Method not allowed');
+        }
+    }
+
+    private function addContactToList()
+    {
+        $data = $this->getJsonInput();
+        if (empty($data['list_id']) || empty($data['contact_id'])) {
+            $this->sendError(400, 'list_id and contact_id are required');
+        }
+
+        $pdo = $this->getConnection();
+
+        // Check if already exists
+        $stmt = $pdo->prepare("SELECT id FROM contact_list_members WHERE list_id = ? AND contact_id = ?");
+        $stmt->execute([$data['list_id'], $data['contact_id']]);
+        if ($stmt->fetch()) {
+            $this->sendError(400, 'Contact already in list');
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+        $stmt->execute([$data['list_id'], $data['contact_id']]);
+
+        $this->sendResponse(['message' => 'Contact added to list']);
+    }
+
+    private function removeContactFromList()
+    {
+        $data = $this->getJsonInput();
+        if (empty($data['list_id']) || empty($data['contact_id'])) {
+            $this->sendError(400, 'list_id and contact_id are required');
+        }
+
+        $pdo = $this->getConnection();
+        $stmt = $pdo->prepare("DELETE FROM contact_list_members WHERE list_id = ? AND contact_id = ?");
+        $stmt->execute([$data['list_id'], $data['contact_id']]);
+
+        $this->sendResponse(['message' => 'Contact removed from list']);
+    }
+    
+
+    private function getContactListMembers()
+    {
+        $pdo = $this->getConnection();
+        $stmt = $pdo->query("SELECT * FROM contact_list_members");
+        $members = $stmt->fetchAll();
+        $this->sendResponse($members);
+    }
+
 
     // Campaign methods
     /*private function getCampaigns() {
