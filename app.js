@@ -17,6 +17,8 @@ class EmailMarketingApp {
     }
 
     init() {
+         this.loadContactListsFromAPI();
+         this.loadContactListMembersFromAPI();
         this.setupEventListeners();
         this.loadDashboard();
         this.loadSenders();
@@ -1110,21 +1112,25 @@ class EmailMarketingApp {
         }).join('');
     }
 
-    handleListSubmit(e) {
+    async handleListSubmit(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const list = Object.fromEntries(formData.entries());
-        list.id = Date.now();
         list.created_at = new Date().toISOString();
         list.is_active = true;
 
-        this.contactLists.push(list);
-        localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
-
-        this.loadContactLists();
-        this.closeModal('list-form-modal');
-        this.showToast('success', '¡Lista creada!', 'La lista se ha creado correctamente.');
+        try {
+            await this.apiRequest('contact-lists', 'POST', list);
+            await this.loadContactListsFromAPI();
+            await this.loadContactListMembersFromAPI();
+            this.loadContactLists();
+            this.closeModal('list-form-modal');
+            this.showToast('success', '¡Lista creada!', 'La lista se ha creado correctamente.');
+        } catch (error) {
+            // Error already handled in apiRequest
+        }
     }
+       
 
     filterContacts() {
         const searchTerm = document.getElementById('search-contacts').value.toLowerCase();
