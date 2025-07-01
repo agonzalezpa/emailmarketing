@@ -1383,6 +1383,10 @@ class EmailMarketingApp {
             await this.loadContactListMembersFromAPI();
             this.loadContactLists();
             this.filterContacts();
+            
+            //desmarco todos los chebox y oculto  el panel de importacion de contactos a la lista
+            document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = false);
+            this.updateBulkActions();
 
             this.showToast('success', 'Contactos agregados', `${selectedContacts.length} contactos agregados a la lista.`);
         } catch (error) {
