@@ -16,9 +16,9 @@ class EmailMarketingApp {
         this.init();
     }
 
-    init() {
-         this.loadContactListsFromAPI();
-         this.loadContactListMembersFromAPI();
+    async init() {
+        await this.loadContactListsFromAPI();
+        await this.loadContactListMembersFromAPI();
         this.setupEventListeners();
         this.loadDashboard();
         this.loadSenders();
