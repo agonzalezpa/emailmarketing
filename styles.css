@@ -784,6 +784,261 @@ body {
     color: var(--text-primary);
 }
 
+/* Lists Tabs */
+.lists-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.list-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    background: var(--card-background);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    font-size: 0.875rem;
+}
+
+.list-tab:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.list-tab.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.list-tab i {
+    font-size: 1rem;
+}
+
+/* Bulk Actions */
+.bulk-actions {
+    padding: 1rem 1.5rem;
+    background: var(--background);
+    border-top: 1px solid var(--border-color);
+}
+
+.bulk-actions-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.bulk-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#selected-count {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Lists Container */
+.lists-header {
+    margin-bottom: 1.5rem;
+}
+
+.lists-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    transition: var(--transition);
+}
+
+.list-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.list-info h4 {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.list-info p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.list-info small {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.list-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Import Steps */
+.import-steps {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.import-step-content {
+    display: none;
+}
+
+.import-step-content.active {
+    display: block;
+}
+
+.csv-format-info {
+    background: var(--background);
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-top: 1rem;
+}
+
+.csv-format-info h4 {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.csv-format-info pre {
+    background: var(--card-background);
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+}
+
+.import-preview {
+    background: var(--background);
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-top: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.import-preview-table {
+    width: 100%;
+    font-size: 0.875rem;
+    border-collapse: collapse;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.import-preview-table th {
+    background: var(--card-background);
+    font-weight: 600;
+}
+
+/* Lists Checkboxes */
+.lists-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--background);
+}
+
+.list-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.list-checkbox input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.list-checkbox label {
+    margin: 0;
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Contact Lists Tags */
+.contact-lists {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.list-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary-color);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .lists-tabs {
+        flex-direction: column;
+    }
+    
+    .bulk-actions-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .bulk-buttons {
+        justify-content: center;
+    }
+    
+    .contacts-table th:nth-child(5),
+    .contacts-table td:nth-child(5) {
+        display: none;
+    }
+    
+    .import-steps {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .sidebar {
@@ -800,106 +1055,6 @@ body {
     
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-    }
-    
-    .sidebar.open {
-        transform: translateX(0);
-    }
-    
-    .main-content {
-        margin-left: 0;
-    }
-    
-    .header {
-        padding: 1rem;
-    }
-    
-    .content-section {
-        padding: 1rem;
-    }
-    
-    .section-header {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: stretch;
-    }
-    
-    .header-actions {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .modal-content {
-        width: 95%;
-        margin: 1rem;
-    }
-    
-    .campaign-steps {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .search-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .contacts-table-container {
-        font-size: 0.875rem;
-    }
-    
-    .contacts-table th,
-    .contacts-table td {
-        padding: 0.5rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .header h1 {
-        font-size: 1.5rem;
-    }
-    
-    .btn {
-        padding: 0.625rem 1rem;
-        font-size: 0.75rem;
-    }
-    
-    .stat-card {
-        padding: 1rem;
-    }
-    
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.25rem;
-    }
-    
-    .stat-content h3 {
-        font-size: 1.5rem;
-    }
-    
-    .modal-header,
-    .modal-body {
-        padding: 1rem;
-    }
-    
-    .editor-content {
-        min-height: 200px;
     }
 }
 
@@ -932,4 +1087,3 @@ body {
         --border-color: #374151;
     }
 }
-
