@@ -922,16 +922,16 @@ class EmailMarketingApp {
             if (contacts.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
             } else {
-                 tableBody.innerHTML = contacts.map(contact => {
-            const contactLists = this.getContactLists(contact.id);
-            const listsHTML = contactLists.length > 0
-                ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
-                : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
+                tableBody.innerHTML = contacts.map(contact => {
+                    const contactLists = this.getContactLists(contact.id);
+                    const listsHTML = contactLists.length > 0
+                        ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
+                        : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
 
-            return `
+                    return `
                 <tr>
                     <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
-                    <td>${contact.name}||-</td>
+                    <td>${contact.name ? contact.name : '-'}</td>
                     <td>${contact.email}</td>
                     <td>
                         <span class="status-badge status-${contact.status}">
@@ -954,7 +954,7 @@ class EmailMarketingApp {
                     </td>
                 </tr>
             `;
-        }).join('');
+                }).join('');
             }
             this.renderPagination(total, limit, page);
         } catch (error) {
@@ -1004,7 +1004,7 @@ class EmailMarketingApp {
 
     async loadContactLists() {
         // Update lists tabs
-        const stats = await this.apiRequest('stats');        
+        const stats = await this.apiRequest('stats');
         const listsTabs = document.getElementById('lists-tabs');
         const allContactsCount = stats.total_contacts;
 
@@ -1135,7 +1135,7 @@ class EmailMarketingApp {
             // Error already handled in apiRequest
         }
     }
-       
+
 
     filterContacts() {
         const searchTerm = document.getElementById('search-contacts').value.toLowerCase();
@@ -1200,7 +1200,7 @@ class EmailMarketingApp {
             return `
                 <tr>
                     <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
-                    <td>${contact.name}||-</td>
+                    <td>${contact.name ? contact.name : '-'}</td>
                     <td>${contact.email}</td>
                     <td>
                         <span class="status-badge status-${contact.status}">
