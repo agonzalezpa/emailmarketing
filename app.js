@@ -905,7 +905,7 @@ class EmailMarketingApp {
     }
 
     ///gestion de contactos
-    async loadContactsOLD(page = 1, search = '') {
+    /*async loadContactsOLD(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
         const tableBody = document.getElementById('contacts-tbody');
@@ -966,7 +966,7 @@ class EmailMarketingApp {
             console.error('Error al cargar contactos:', error);
             tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
         }
-    }
+    }*/
     async loadContacts(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
@@ -1023,6 +1023,12 @@ class EmailMarketingApp {
             `;
                 }).join('');
             }
+            // Add event listeners to checkboxes
+            document.querySelectorAll('.contact-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    this.updateBulkActions();
+                });
+            });
             // Paginación
             this.renderPagination(total, limit, page);
         } catch (error) {
@@ -1060,7 +1066,7 @@ class EmailMarketingApp {
         if (totalPages <= 1) return;
 
         // Botón "Anterior"
-   paginationControls.innerHTML += `
+        paginationControls.innerHTML += `
     <button class="btn btn-success" onclick="emailApp.goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
         &laquo; Anterior
     </button>`;
@@ -1070,7 +1076,7 @@ class EmailMarketingApp {
 
 
         // Botón "Siguiente"
-       paginationControls.innerHTML += `
+        paginationControls.innerHTML += `
     <button class="btn btn-success" onclick="emailApp.goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
         Siguiente &raquo;
     </button>`;
@@ -1104,15 +1110,15 @@ class EmailMarketingApp {
         // Add event listeners to tabs
         document.querySelectorAll('.list-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
-            // Quitar 'active' de todos los tabs
-            document.querySelectorAll('.list-tab').forEach(t => t.classList.remove('active'));
-            // Poner 'active' solo al tab clickeado
-            e.currentTarget.classList.add('active');
-            // Cambiar la lista actual y recargar contactos
-            const listId = e.currentTarget.dataset.list;
-            this.currentListId = listId;
-            const page = this.listPages[this.currentListId] || 1;
-            this.loadContacts(page, this.currentSearch);
+                // Quitar 'active' de todos los tabs
+                document.querySelectorAll('.list-tab').forEach(t => t.classList.remove('active'));
+                // Poner 'active' solo al tab clickeado
+                e.currentTarget.classList.add('active');
+                // Cambiar la lista actual y recargar contactos
+                const listId = e.currentTarget.dataset.list;
+                this.currentListId = listId;
+                const page = this.listPages[this.currentListId] || 1;
+                this.loadContacts(page, this.currentSearch);
             });
         });
 
