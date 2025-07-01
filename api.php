@@ -377,58 +377,11 @@ class EmailMarketingAPI
     }
 
     // Contact methods
-    private function getContactsOLD()
-    {
-        $pdo = $this->getConnection();
-        $search = $_GET['search'] ?? '';
-        $status = $_GET['status'] ?? '';
-        $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = min(100, max(10, (int)($_GET['limit'] ?? 50)));
-        $offset = ($page - 1) * $limit;
-
-        $where = "1=1";
-        $params = [];
-
-        if ($search) {
-            $where .= " AND (name LIKE ? OR email LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-        }
-
-        if ($status) {
-            $where .= " AND status = ?";
-            $params[] = $status;
-        }
-
-        // Get total count
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM contacts WHERE $where");
-        $stmt->execute($params);
-        $total = $stmt->fetchColumn();
-
-        // Get contacts
-        $stmt = $pdo->prepare("
-            SELECT * FROM contacts 
-            WHERE $where 
-            ORDER BY created_at DESC 
-            LIMIT $limit OFFSET $offset
-        ");
-        $stmt->execute($params);
-        $contacts = $stmt->fetchAll();
-
-        $this->sendResponse([
-            'contacts' => $contacts,
-            'pagination' => [
-                'page' => $page,
-                'limit' => $limit,
-                'total' => $total,
-                'pages' => ceil($total / $limit)
-            ]
-        ]);
-    }
+   
 
     // En tu clase Api, reemplaza el método getContacts
 
-    private function getContacts()
+    private function getContactsOLD()
     {
         // Lee los parámetros de la URL para la paginación y búsqueda
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -476,6 +429,53 @@ class EmailMarketingAPI
 
         $this->sendResponse($response);
     }
+
+    private function getContacts()
+{
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $limit = 15;
+    $search = $_GET['search'] ?? '';
+    $listId = $_GET['list_id'] ?? null;
+    $offset = ($page - 1) * $limit;
+
+    $pdo = $this->getConnection();
+
+    $whereClause = "1=1";
+    $params = [];
+
+    if (!empty($search)) {
+        $whereClause .= " AND (name LIKE :search OR email LIKE :search)";
+        $params[':search'] = "%$search%";
+    }
+
+    if (!empty($listId) && $listId !== 'all') {
+        $whereClause .= " AND id IN (SELECT contact_id FROM contact_list_members WHERE list_id = :list_id)";
+        $params[':list_id'] = $listId;
+    }
+
+    // Total count
+    $totalSql = "SELECT COUNT(*) FROM contacts WHERE $whereClause";
+    $totalStmt = $pdo->prepare($totalSql);
+    $totalStmt->execute($params);
+    $total = $totalStmt->fetchColumn();
+
+    // Data
+    $dataSql = "SELECT * FROM contacts WHERE $whereClause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+    $dataStmt = $pdo->prepare($dataSql);
+    foreach ($params as $key => $value) {
+        $dataStmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $dataStmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $dataStmt->execute();
+    $contacts = $dataStmt->fetchAll();
+
+    $this->sendResponse([
+        'total' => $total,
+        'limit' => $limit,
+        'data' => $contacts
+    ]);
+}
 
     private function getContact($id)
     {

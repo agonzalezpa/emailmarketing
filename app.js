@@ -11,6 +11,7 @@ class EmailMarketingApp {
         this.currentListId = 'all';
         this.contactLists = JSON.parse('[]');
         this.contactListMembers = JSON.parse('[]');
+        this.listPages = {}; // { [listId]: pageNumber }
 
 
         this.init();
@@ -172,7 +173,7 @@ class EmailMarketingApp {
 
     /**
      * Cambia entre la vista de 'Contactos' y 'Listas'
-     */
+     
     switchView(view) {
         this.currentView = view;
         const contactsView = document.getElementById('contacts-view');
@@ -194,10 +195,11 @@ class EmailMarketingApp {
             createListBtn.style.display = 'none';
             tabContacts.classList.add('active');
             tabLists.classList.remove('active');
-            this.loadContacts(1, "");
-            //this.loadContacts();
+            //this.loadContacts(1, "");
+            const page = this.listPages[this.currentListId] || 1;
+            this.loadContacts(page, this.currentSearch);
         }
-    }
+    }*/
 
 
     async apiRequest(endpoint, method = 'GET', data = null) {
@@ -903,7 +905,7 @@ class EmailMarketingApp {
     }
 
     ///gestion de contactos
-    async loadContacts(page = 1, search = '') {
+    async loadContactsOLD(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
         const tableBody = document.getElementById('contacts-tbody');
@@ -965,6 +967,71 @@ class EmailMarketingApp {
             tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
         }
     }
+    async loadContacts(page = 1, search = '') {
+        this.currentPage = page;
+        this.currentSearch = search;
+        const tableBody = document.getElementById('contacts-tbody');
+        if (!tableBody) return;
+        tableBody.innerHTML = '<tr><td colspan="4">Cargando contactos...</td></tr>';
+        try {
+            await this.loadContactListsFromAPI();
+            await this.loadContactListMembersFromAPI();
+
+            // Si está seleccionada una lista específica, agrega el parámetro list_id
+            let endpoint = `contacts?page=${page}&search=${encodeURIComponent(search)}`;
+            if (this.currentListId && this.currentListId !== 'all') {
+                endpoint += `&list_id=${this.currentListId}`;
+            }
+
+            const response = await this.apiRequest(endpoint, 'GET');
+            const { total, limit, data: contacts } = response;
+            this.contacts = contacts;
+            if (contacts.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No se encontraron contactos.</td></tr>';
+            } else {
+                tableBody.innerHTML = contacts.map(contact => {
+                    const contactLists = this.getContactLists(contact.id);
+                    const listsHTML = contactLists.length > 0
+                        ? contactLists.map(list => `<span class="list-tag">${list.name}</span>`).join('')
+                        : '<span style="color: var(--text-secondary); font-size: 0.75rem;">Sin listas</span>';
+
+                    return `
+                <tr>
+                    <td><input type="checkbox" class="contact-checkbox" value="${contact.id}"></td>
+                    <td>${contact.name ? contact.name : '-'}</td>
+                    <td>${contact.email}</td>
+                    <td>
+                        <span class="status-badge status-${contact.status}">
+                            ${contact.status === 'active' ? 'Activo' : 'Inactivo'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="contact-lists">
+                            ${listsHTML}
+                        </div>
+                    </td>
+                    <td>${new Date(contact.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.editContact(${contact.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="emailApp.deleteContact(${contact.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+                }).join('');
+            }
+            // Paginación
+            this.renderPagination(total, limit, page);
+        } catch (error) {
+            console.error('Error al cargar contactos:', error);
+            tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar los contactos.</td></tr>';
+        }
+    }
+
+
     /**
         * Escapa caracteres HTML para prevenir ataques XSS.
         * Esta función es crucial para la seguridad al renderizar datos del usuario.
@@ -977,7 +1044,10 @@ class EmailMarketingApp {
         p.appendChild(document.createTextNode(str));
         return p.innerHTML;
     }
-
+    goToPage(newPage) {
+        this.listPages[this.currentListId] = newPage;
+        this.loadContacts(newPage, this.currentSearch);
+    }
     /**
      * Dibuja los botones de la paginación
      */
@@ -985,24 +1055,25 @@ class EmailMarketingApp {
         const paginationControls = document.getElementById('pagination-controls');
         const totalPages = Math.ceil(total / limit);
         if (!paginationControls) return;
-        paginationControls.innerHTML = '';
+        paginationControls.innerHTML = '<br>';
 
         if (totalPages <= 1) return;
 
         // Botón "Anterior"
-        paginationControls.innerHTML += `
-            <button class="btn btn-success" onclick="emailApp.loadContacts(${currentPage - 1}, emailApp.currentSearch)" ${currentPage === 1 ? 'disabled' : ''}>
-                &laquo; Anterior
-            </button>`;
+   paginationControls.innerHTML += `
+    <button class="btn btn-success" onclick="emailApp.goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        &laquo; Anterior
+    </button>`;
 
         // Indicador de página
         paginationControls.innerHTML += `<span>Página ${currentPage} de ${totalPages}</span>`;
 
+
         // Botón "Siguiente"
-        paginationControls.innerHTML += `
-            <button class="btn btn-success" onclick="emailApp.loadContacts(${currentPage + 1}, emailApp.currentSearch)" ${currentPage === totalPages ? 'disabled' : ''}>
-                Siguiente &raquo;
-            </button>`;
+       paginationControls.innerHTML += `
+    <button class="btn btn-success" onclick="emailApp.goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        Siguiente &raquo;
+    </button>`;
     }
 
     async loadContactLists() {
@@ -1033,9 +1104,13 @@ class EmailMarketingApp {
         // Add event listeners to tabs
         document.querySelectorAll('.list-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
-                this.currentListId = e.currentTarget.dataset.list;
+                /*this.currentListId = e.currentTarget.dataset.list;
                 this.loadContactLists();
-                this.filterContacts();
+                this.filterContacts();*/
+                const listId = e.currentTarget.dataset.list;
+                this.currentListId = listId;
+                const page = this.listPages[this.currentListId] || 1;
+                this.loadContacts(page, this.currentSearch);
             });
         });
 
