@@ -876,21 +876,21 @@ class EmailMarketingAPI
     private function addContactToList()
     {
         $data = $this->getJsonInput();
-        if (empty($data['list_id']) || empty($data['contact_id'])) {
-            $this->sendError(400, 'list_id and contact_id are required');
+        if (empty($data['list_id']) || empty($data['contact_ids'])) {
+            $this->sendError(400, 'list_id and contact_ids are required');
         }
 
         $pdo = $this->getConnection();
 
         // Check if already exists
         $stmt = $pdo->prepare("SELECT id FROM contact_list_members WHERE list_id = ? AND contact_id = ?");
-        $stmt->execute([$data['list_id'], $data['contact_id']]);
+        $stmt->execute([$data['list_id'], $data['contact_ids']]);
         if ($stmt->fetch()) {
             $this->sendError(400, 'Contact already in list');
         }
 
-        $stmt = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
-        $stmt->execute([$data['list_id'], $data['contact_id']]);
+        $stmt = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_ids) VALUES (?, ?)");
+        $stmt->execute([$data['list_id'], $data['contact_ids']]);
 
         $this->sendResponse(['message' => 'Contact added to list']);
     }
