@@ -1367,6 +1367,22 @@ class EmailMarketingApp {
 
         this.showToast('success', 'Contactos eliminados', `${selectedContacts.length} contactos eliminados.`);
     }
+    async deleteContact(id) {
+        if (confirm('¿Estás seguro de que quieres eliminar este contacto?')) {
+           // this.contacts = this.contacts.filter(c => c.id !== id);
+            try {
+                await this.apiRequest(`contacts/${id}`, 'DELETE');
+            } catch (error) {
+                // Puedes mostrar un error o continuar
+            }
+            // Recarga datos desde la API
+            await this.loadContacts();
+            await this.loadContactListMembersFromAPI();
+            this.loadContactLists();
+            this.updateStats();
+            this.showToast('success', 'Contacto eliminado', 'El contacto se ha eliminado correctamente.');
+        }
+    }
 
     // Import functionality
     handleFileSelect(e) {
@@ -1592,15 +1608,7 @@ class EmailMarketingApp {
         this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
     }
 
-    deleteContact(id) {
-        if (confirm('¿Estás seguro de que quieres eliminar este contacto?')) {
-            this.contacts = this.contacts.filter(c => c.id !== id);
-            localStorage.setItem('contacts', JSON.stringify(this.contacts));
-            this.loadContacts();
-            this.updateStats();
-            this.showToast('success', 'Contacto eliminado', 'El contacto se ha eliminado correctamente.');
-        }
-    }
+
 
     editSender(id) {
         // This would open the sender modal with the sender data pre-filled
