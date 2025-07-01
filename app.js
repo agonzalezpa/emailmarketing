@@ -307,7 +307,11 @@ class EmailMarketingApp {
             await this.apiRequest('contacts', 'POST', contact);
             this.closeModal('contact-modal');
             this.showToast('success', 'Contacto creado', 'El contacto se ha creado correctamente.');
-            this.loadContacts();
+           // Recarga datos desde la API
+            await this.loadContacts();
+            await this.loadContactListMembersFromAPI();
+            this.loadContactLists();
+            this.updateStats();
         } catch (error) {
             this.showToast('error', 'Error al crear contacto', error.message);
         }
