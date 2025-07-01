@@ -184,9 +184,9 @@
                                     <th><input type="checkbox" id="select-all-contacts"></th>
                                     <th>Nombre</th>
                                     <th>Email</th>
-                                    <th>Estado</th>                                   
-                                    <th>Listas</th> 
-                                    <th>Fecha Agregado</th>                                    
+                                    <th>Estado</th>
+                                    <th>Listas</th>
+                                    <th>Fecha Agregado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -209,32 +209,32 @@
                                 Siguiente
                                 <i class="fas fa-chevron-right"></i>
                             </button>
-                    </div>
+                        </div>
 
-                    <!-- Bulk Actions -->
-                    <div class="bulk-actions" id="bulk-actions" style="display: none;">
-                        <div class="bulk-actions-content">
-                            <span id="selected-count">0 contactos seleccionados</span>
-                            <div class="bulk-buttons">
-                                <select id="bulk-list-select">
-                                    <option value="">Agregar a lista...</option>
-                                </select>
-                                <button class="btn btn-outline btn-sm" id="bulk-add-to-list">
-                                    <i class="fas fa-plus"></i>
-                                    Agregar
-                                </button>
-                                <button class="btn btn-outline btn-sm" id="bulk-remove-from-list">
-                                    <i class="fas fa-minus"></i>
-                                    Remover
-                                </button>
-                                <button class="btn btn-outline btn-sm" id="bulk-delete">
-                                    <i class="fas fa-trash"></i>
-                                    Eliminar
-                                </button>
+                        <!-- Bulk Actions -->
+                        <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                            <div class="bulk-actions-content">
+                                <span id="selected-count">0 contactos seleccionados</span>
+                                <div class="bulk-buttons">
+                                    <select id="bulk-list-select">
+                                        <option value="">Agregar a lista...</option>
+                                    </select>
+                                    <button class="btn btn-outline btn-sm" id="bulk-add-to-list">
+                                        <i class="fas fa-plus"></i>
+                                        Agregar
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" id="bulk-remove-from-list">
+                                        <i class="fas fa-minus"></i>
+                                        Remover
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" id="bulk-delete">
+                                        <i class="fas fa-trash"></i>
+                                        Eliminar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
             </section>
 
 
@@ -591,26 +591,47 @@ María García,maria@example.com,active</pre>
             </form>
         </div>
     </div>
-        <!-- Ventana Modal para Crear Lista de Contactos -->
-    <div class="modal" id="list-form-modal">
-      <div class="modal-content">
-        <button class="modal-close" data-modal="list-form-modal" aria-label="Cerrar">&times;</button>
-        <h2>Crear Nueva Lista</h2>
-        <form id="list-form">
-          <div class="form-group">
-            <label for="list-name">Nombre de la lista</label>
-            <input type="text" id="list-name" name="name" required placeholder="Ej: Clientes VIP">
-          </div>
-          <div class="form-group">
-            <label for="list-description">Descripción</label>
-            <textarea id="list-description" name="description" placeholder="Descripción opcional"></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="submit" class="btn btn-primary">Crear Lista</button>
-            <button type="button" class="btn btn-outline modal-close" data-modal="list-form-modal">Cancelar</button>
-          </div>
-        </form>
-      </div>
+    
+    <!-- Step 2: Import Configuration -->
+    <div class="import-step-content" id="import-step-2">
+        <div class="form-group">
+            <label for="import-list-select">Agregar contactos a la lista (opcional)</label>
+            <select id="import-list-select">
+                <option value="">No agregar a ninguna lista</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="create-new-list-checkbox">
+                Crear nueva lista para estos contactos
+            </label>
+        </div>
+        <div class="form-group" id="new-list-name-group" style="display: none;">
+            <label for="new-list-name">Nombre de la nueva lista</label>
+            <input type="text" id="new-list-name" placeholder="Nueva Lista">
+        </div>
+        <div class="import-preview" id="import-preview">
+            <!-- Preview will be shown here -->
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="import-prev-step" style="display: none;">
+            <i class="fas fa-arrow-left"></i>
+            Anterior
+        </button>
+        <button type="button" class="btn btn-outline" data-modal="import-modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="import-next-step">
+            Siguiente
+            <i class="fas fa-arrow-right"></i>
+        </button>
+        <button type="button" class="btn btn-success" id="import-contacts" style="display: none;">
+            <i class="fas fa-upload"></i>
+            Importar Contactos
+        </button>
+    </div>
+    </div>
+    </div>
     </div>
 
     <div class="toast-container" id="toast-container"></div>
