@@ -23,7 +23,7 @@ class EmailMarketingApp {
         this.loadContacts();
         this.loadCampaigns();
         this.updateStats();
-        // this.loadContactLists();
+        this.loadContactLists();
     }
 
 
@@ -82,6 +82,19 @@ class EmailMarketingApp {
 
         document.getElementById('filter-list').addEventListener('change', (e) => {
             this.filterContacts();
+        });
+
+        // List management
+        document.getElementById('manage-lists-btn').addEventListener('click', () => {
+            this.openModal('lists-modal');
+        });
+
+        document.getElementById('create-list-btn').addEventListener('click', () => {
+            this.openModal('list-form-modal');
+        });
+
+        document.getElementById('list-form').addEventListener('submit', (e) => {
+            this.handleListSubmit(e);
         });
 
         // Bulk actions

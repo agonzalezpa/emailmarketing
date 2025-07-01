@@ -351,6 +351,59 @@
         </div>
     </div>
 
+    <!-- Manage Lists Modal -->
+    <div class="modal" id="lists-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Gestionar Listas de Contactos</h3>
+                <button class="modal-close" data-modal="lists-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="lists-header">
+                    <button class="btn btn-primary" id="create-list-btn">
+                        <i class="fas fa-plus"></i>
+                        Nueva Lista
+                    </button>
+                </div>
+                <div class="lists-container" id="lists-container">
+                    <div class="empty-state">
+                        <i class="fas fa-list"></i>
+                        <p>No hay listas creadas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit List Modal -->
+    <div class="modal" id="list-form-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="list-form-title">Crear Nueva Lista</h3>
+                <button class="modal-close" data-modal="list-form-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="list-form" class="modal-body">
+                <div class="form-group">
+                    <label for="list-name">Nombre de la Lista</label>
+                    <input type="text" id="list-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="list-description">Descripción (opcional)</label>
+                    <textarea id="list-description" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-modal="list-form-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Lista</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
     <div class="modal large" id="campaign-modal">
         <div class="modal-content">
             <div class="modal-header">
