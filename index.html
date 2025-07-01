@@ -337,6 +337,12 @@
                     <input type="email" id="contact-email" name="email" required>
                 </div>
                 <div class="form-group">
+                    <label>Agregar a listas</label>
+                    <div id="contact-lists-checkboxes">
+                        <!-- Aquí se insertarán los checkboxes de listas dinámicamente -->
+                    </div>
+                </div>
+                <div class="form-group">
                     <label for="contact-status">Estado</label>
                     <select id="contact-status" name="status">
                         <option value="active">Activo</option>
@@ -352,15 +358,15 @@
     </div>
 
     <!-- Manage Lists Modal -->
-    <div class="modal"  id="lists-modal">
-        <div   class="modal-content">
+    <div class="modal" id="lists-modal">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3>Gestionar Listas de Contactos</h3>
                 <button class="modal-close" data-modal="lists-modal">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div  class="modal-body">
+            <div class="modal-body">
                 <div class="lists-header">
                     <button class="btn btn-primary" id="create-list-btn">
                         <i class="fas fa-plus"></i>
@@ -591,7 +597,7 @@ María García,maria@example.com,active</pre>
             </form>
         </div>
     </div>
-    
+
     <!-- Step 2: Import Configuration -->
     <div class="import-step-content" id="import-step-2">
         <div class="form-group">

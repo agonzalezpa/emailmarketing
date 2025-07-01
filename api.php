@@ -377,9 +377,6 @@ class EmailMarketingAPI
     }
 
     // Contact methods
-   
-
-    // En tu clase Api, reemplaza el método getContacts
 
     private function getContactsOLD()
     {
@@ -431,51 +428,51 @@ class EmailMarketingAPI
     }
 
     private function getContacts()
-{
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $limit = 15;
-    $search = $_GET['search'] ?? '';
-    $listId = $_GET['list_id'] ?? null;
-    $offset = ($page - 1) * $limit;
+    {
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit = 15;
+        $search = $_GET['search'] ?? '';
+        $listId = $_GET['list_id'] ?? null;
+        $offset = ($page - 1) * $limit;
 
-    $pdo = $this->getConnection();
+        $pdo = $this->getConnection();
 
-    $whereClause = "1=1";
-    $params = [];
+        $whereClause = "1=1";
+        $params = [];
 
-    if (!empty($search)) {
-        $whereClause .= " AND (name LIKE :search OR email LIKE :search)";
-        $params[':search'] = "%$search%";
+        if (!empty($search)) {
+            $whereClause .= " AND (name LIKE :search OR email LIKE :search)";
+            $params[':search'] = "%$search%";
+        }
+
+        if (!empty($listId) && $listId !== 'all') {
+            $whereClause .= " AND id IN (SELECT contact_id FROM contact_list_members WHERE list_id = :list_id)";
+            $params[':list_id'] = $listId;
+        }
+
+        // Total count
+        $totalSql = "SELECT COUNT(*) FROM contacts WHERE $whereClause";
+        $totalStmt = $pdo->prepare($totalSql);
+        $totalStmt->execute($params);
+        $total = $totalStmt->fetchColumn();
+
+        // Data
+        $dataSql = "SELECT * FROM contacts WHERE $whereClause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        $dataStmt = $pdo->prepare($dataSql);
+        foreach ($params as $key => $value) {
+            $dataStmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $dataStmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $dataStmt->execute();
+        $contacts = $dataStmt->fetchAll();
+
+        $this->sendResponse([
+            'total' => $total,
+            'limit' => $limit,
+            'data' => $contacts
+        ]);
     }
-
-    if (!empty($listId) && $listId !== 'all') {
-        $whereClause .= " AND id IN (SELECT contact_id FROM contact_list_members WHERE list_id = :list_id)";
-        $params[':list_id'] = $listId;
-    }
-
-    // Total count
-    $totalSql = "SELECT COUNT(*) FROM contacts WHERE $whereClause";
-    $totalStmt = $pdo->prepare($totalSql);
-    $totalStmt->execute($params);
-    $total = $totalStmt->fetchColumn();
-
-    // Data
-    $dataSql = "SELECT * FROM contacts WHERE $whereClause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
-    $dataStmt = $pdo->prepare($dataSql);
-    foreach ($params as $key => $value) {
-        $dataStmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
-    }
-    $dataStmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $dataStmt->execute();
-    $contacts = $dataStmt->fetchAll();
-
-    $this->sendResponse([
-        'total' => $total,
-        'limit' => $limit,
-        'data' => $contacts
-    ]);
-}
 
     private function getContact($id)
     {
@@ -513,9 +510,9 @@ class EmailMarketingAPI
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO contacts (name, email, status, tags, custom_fields) 
-            VALUES (?, ?, ?, ?, ?)
-        ");
+        INSERT INTO contacts (name, email, status, tags, custom_fields) 
+        VALUES (?, ?, ?, ?, ?)
+    ");
 
         $stmt->execute([
             $data['name'],
@@ -526,6 +523,24 @@ class EmailMarketingAPI
         ]);
 
         $contactId = $pdo->lastInsertId();
+
+        // Si se recibieron listas, agregar el contacto a cada una
+        if (!empty($data['list_ids']) && is_array($data['list_ids'])) {
+            $stmtList = $pdo->prepare("INSERT INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+            foreach ($data['list_ids'] as $listId) {
+                // Verifica que la lista exista (opcional)
+                $stmtCheck = $pdo->prepare("SELECT id FROM contact_lists WHERE id = ?");
+                $stmtCheck->execute([$listId]);
+                if ($stmtCheck->fetch()) {
+                    try {
+                        $stmtList->execute([$listId, $contactId]);
+                    } catch (Exception $e) {
+                        // Si ya existe la relación, la ignoramos
+                    }
+                }
+            }
+        }
+
         $this->sendResponse(['id' => $contactId, 'message' => 'Contact created successfully']);
     }
 
@@ -940,21 +955,6 @@ class EmailMarketingAPI
         $members = $stmt->fetchAll();
         $this->sendResponse($members);
     }
-
-
-    // Campaign methods
-    /*private function getCampaigns() {
-        $pdo = $this->getConnection();
-        $stmt = $pdo->query("
-            SELECT c.*, s.name as sender_name, s.email as sender_email 
-            FROM campaigns c 
-            LEFT JOIN senders s ON c.sender_id = s.id 
-            ORDER BY c.created_at DESC
-        ");
-        $campaigns = $stmt->fetchAll();
-        
-        $this->sendResponse($campaigns);
-    }*/
 
     // Campaign methods
     private function getCampaigns()

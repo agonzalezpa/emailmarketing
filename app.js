@@ -69,6 +69,7 @@ class EmailMarketingApp {
 
         // Contact management
         document.getElementById('add-contact-btn').addEventListener('click', () => {
+            this.updateContactListsCheckboxes();
             this.openModal('contact-modal');
         });
 
@@ -316,28 +317,34 @@ class EmailMarketingApp {
         }
     }
 
+
     async handleContactSubmit(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const contact = Object.fromEntries(formData.entries());
 
-        // Check if email already exists
-        if (this.contacts.some(c => c.email === contact.email)) {
-            this.showToast('error', 'Email duplicado', 'Ya existe un contacto con ese email.');
-            return;
-        }
-
-        contact.id = Date.now();
-        contact.created_at = new Date().toISOString();
+        // Obtener listas seleccionadas
+        const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes input[name="lists"]:checked'))
+            .map(cb => parseInt(cb.value));
 
         try {
-            await this.apiRequest('contacts', 'POST', contact);
-            this.loadContacts();
+            // Crear el contacto
+            const newContact = await this.apiRequest('contacts', 'POST', contact);
+
+            // Si hay listas seleccionadas, agregar el contacto a esas listas
+            if (selectedLists.length > 0) {
+                await this.apiRequest('contact-list-members', 'POST', {
+                    list_id: null, // No se usa en este caso
+                    contact_ids: [newContact.id],
+                    list_ids: selectedLists
+                });
+            }
+
             this.closeModal('contact-modal');
-            this.updateStats();
-            this.showToast('success', '¡Contacto agregado!', 'El contacto se ha guardado correctamente.');
+            this.showToast('success', 'Contacto creado', 'El contacto se ha creado correctamente.');
+            this.loadContacts();
         } catch (error) {
-            // Error already handled in apiRequest
+             this.showToast('error', 'Error al crear contacto', error.message);
         }
     }
 
@@ -905,6 +912,23 @@ class EmailMarketingApp {
     }
 
     ///gestion de contactos
+
+    updateContactListsCheckboxes() {
+        const container = document.getElementById('contact-lists-checkboxes');
+        if (!container) return;
+
+        if (this.contactLists.length === 0) {
+            container.innerHTML = '<p class="empty-state">No hay listas disponibles</p>';
+            return;
+        }
+
+        container.innerHTML = this.contactLists.map(list => `
+        <div class="list-checkbox">
+            <input type="checkbox" id="list-${list.id}" value="${list.id}" name="lists">
+            <label for="list-${list.id}">${list.name}</label>
+        </div>
+    `).join('');
+    }
     /*async loadContactsOLD(page = 1, search = '') {
         this.currentPage = page;
         this.currentSearch = search;
@@ -1383,7 +1407,7 @@ class EmailMarketingApp {
             await this.loadContactListMembersFromAPI();
             this.loadContactLists();
             this.filterContacts();
-            
+
             //desmarco todos los chebox y oculto  el panel de importacion de contactos a la lista
             document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = false);
             this.updateBulkActions();
