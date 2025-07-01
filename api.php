@@ -532,11 +532,17 @@ class EmailMarketingAPI
 
         $pdo = $this->getConnection();
 
+        // Eliminar de las listas primero
+        $stmt = $pdo->prepare("DELETE FROM contact_list_members WHERE contact_id = ?");
+        $stmt->execute([$id]);
+
+        // Luego eliminar el contacto
         $stmt = $pdo->prepare("DELETE FROM contacts WHERE id = ?");
         $stmt->execute([$id]);
 
         $this->sendResponse(['message' => 'Contact deleted successfully']);
     }
+   
 
     private function importContacts()
     {
