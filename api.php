@@ -90,7 +90,12 @@ class EmailMarketingAPI
                     $this->handleSenders($method, $id);
                     break;
                 case 'contacts':
-                    $this->handleContacts($method, $id);
+                    // Soporta /contacts/count
+                    if (isset($pathParts[1]) && $pathParts[1] === 'count') {
+                        $this->countContacts();
+                    } else {
+                        $this->handleContacts($method, $id);
+                    }
                     break;
                 case 'campaigns':
                     $this->handleCampaigns($method, $id);
@@ -119,6 +124,36 @@ class EmailMarketingAPI
         } catch (Exception $e) {
             $this->sendError(500, 'Server error: ' . $e->getMessage());
         }
+    }
+
+    public function countContacts()
+    {
+        $pdo = $this->getConnection();
+        $listIds = isset($_GET['list_ids']) ? explode(',', $_GET['list_ids']) : [];
+
+        if (empty($listIds) || (count($listIds) === 1 && $listIds[0] === '')) {
+            // Todos los contactos activos
+            $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM contacts WHERE status = 'active'");
+            $stmt->execute();
+        } elseif (count($listIds) === 1) {
+            // Contactos activos en una lista
+            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT c.id) as total
+            FROM contacts c
+            JOIN contact_list_members clm ON c.id = clm.contact_id
+            WHERE clm.list_id = ? AND c.status = 'active'");
+            $stmt->execute([$listIds[0]]);
+        } else {
+            // Contactos activos en varias listas (distintos)
+            $in = str_repeat('?,', count($listIds) - 1) . '?';
+            $sql = "SELECT COUNT(DISTINCT c.id) as total
+            FROM contacts c
+            JOIN contact_list_members clm ON c.id = clm.contact_id
+            WHERE clm.list_id IN ($in) AND c.status = 'active'";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($listIds);
+        }
+        $total = $stmt->fetchColumn();
+        $this->sendResponse(['total' => (int)$total]);
     }
 
     private function handleTestConnection()
@@ -1292,7 +1327,7 @@ class EmailMarketingAPI
         }
     }
 
-   
+
 
     private function testSmtpConnection($config)
     {

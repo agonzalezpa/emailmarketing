@@ -172,8 +172,6 @@ class EmailMarketingApp {
         });
     }
 
-    // --- NUEVOS MÉTODOS Y MÉTODOS ACTUALIZADOS ---filter
-
 
     async apiRequest(endpoint, method = 'GET', data = null) {
         try {
@@ -683,6 +681,17 @@ class EmailMarketingApp {
     }
 
     async updateCampaignSummary() {
+        // Mostrar spinner
+        const loading = document.getElementById('summary-recipients-loading');
+        if (loading) loading.style.display = 'inline';
+        //Limpio los textos
+        document.getElementById('summary-name').textContent = "";
+        document.getElementById('summary-sender').textContent = "";
+        document.getElementById('summary-subject').textContent = "";
+        document.getElementById('summary-recipients').textContent = "";
+
+
+
         const name = document.getElementById('campaign-name').value;
         const senderId = document.getElementById('campaign-sender').value;
         let sender = null;
@@ -698,31 +707,23 @@ class EmailMarketingApp {
         const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes-campain input[name="lists"]:checked'))
             .map(cb => parseInt(cb.value));
 
-        let recipientIds = [];
-
-        if (selectedLists.length > 0) {
-            // Filtra los miembros de las listas seleccionadas
-            recipientIds = this.contactListMembers
-                .filter(m => selectedLists.includes(m.list_id))
-                .map(m => m.contact_id);
-
-            // Elimina duplicados
-            recipientIds = [...new Set(recipientIds)];
-
-            // Filtra solo contactos activos
-            recipientIds = recipientIds.filter(id => {
-                const contact = this.contacts.find(c => c.id === id);
-                return contact && contact.status === 'active';
-            });
-        } else {
-            // Si no hay listas seleccionadas, todos los contactos activos
-            recipientIds = this.contacts.filter(c => c.status === 'active').map(c => c.id);
+        // Llama al endpoint de conteo eficiente en el backend
+        let totalRecipients = 0;
+        try {
+            let endpoint = 'contacts/count';
+            if (selectedLists.length > 0) {
+                endpoint += '?list_ids=' + selectedLists.join(',');
+            }
+            const result = await this.apiRequest(endpoint, 'GET');
+            totalRecipients = result.total;
+        } catch (e) {
+            totalRecipients = 0;
         }
 
         document.getElementById('summary-name').textContent = name;
         document.getElementById('summary-sender').textContent = sender ? `${sender.name} (${sender.email})` : '';
         document.getElementById('summary-subject').textContent = subject;
-        document.getElementById('summary-recipients').textContent = recipientIds.length;
+        document.getElementById('summary-recipients').textContent = totalRecipients;
 
         // Update preview with proper HTML rendering
         const previewContainer = document.getElementById('email-preview-content');
@@ -734,27 +735,27 @@ class EmailMarketingApp {
         // Create a styled preview
         const previewDiv = document.createElement('div');
         previewDiv.style.cssText = `
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 20px;
-            background-color: white;
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            max-height: 400px;
-            overflow-y: auto;
-        `;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        background-color: white;
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        max-height: 400px;
+        overflow-y: auto;
+    `;
 
         // Add subject as header
         if (subject) {
             const subjectHeader = document.createElement('div');
             subjectHeader.style.cssText = `
-                font-size: 18px;
-                font-weight: bold;
-                color: #333;
-                border-bottom: 2px solid #eee;
-                padding-bottom: 10px;
-                margin-bottom: 15px;
-            `;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        `;
             subjectHeader.textContent = subject;
             previewDiv.appendChild(subjectHeader);
         }
@@ -765,6 +766,10 @@ class EmailMarketingApp {
         previewDiv.appendChild(contentDiv);
 
         previewContainer.appendChild(previewDiv);
+
+        // Oculta el spinner
+        if (loading) loading.style.display = 'none';
+        
     }
 
     handleEditorCommand(command) {
