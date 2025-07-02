@@ -133,10 +133,12 @@ class EmailMarketingApp {
 
         // Campaign management
         document.getElementById('new-campaign-btn').addEventListener('click', () => {
+            this.updateCampaignListsCheckboxes();
             this.openCampaignModal();
         });
 
         document.getElementById('create-campaign-btn').addEventListener('click', () => {
+            this.updateCampaignListsCheckboxes();
             this.openCampaignModal();
         });
 
@@ -307,7 +309,7 @@ class EmailMarketingApp {
             await this.apiRequest('contacts', 'POST', contact);
             this.closeModal('contact-modal');
             this.showToast('success', 'Contacto creado', 'El contacto se ha creado correctamente.');
-           // Recarga datos desde la API
+            // Recarga datos desde la API
             await this.loadContacts();
             await this.loadContactListMembersFromAPI();
             this.loadContactLists();
@@ -363,6 +365,10 @@ class EmailMarketingApp {
 
     async handleCampaignSubmit(e) {
         e.preventDefault();
+        // Recoge los checkboxes seleccionados manualmente
+        const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes-campain input[name="lists"]:checked'))
+            .map(cb => parseInt(cb.value));
+
 
         const campaign = {
             name: document.getElementById('campaign-name').value,
@@ -370,7 +376,11 @@ class EmailMarketingApp {
             subject: document.getElementById('campaign-subject').value,
             html_content: document.getElementById('email-editor').innerHTML,
         };
+        if (selectedLists.length > 0) {
+            campaign.list_ids = selectedLists;
+        }
 
+        console.log('Campaña a enviar:', campaign); // Debe mostrar list_ids si hay listas seleccionadas
         try {
             const result = await this.apiRequest('campaigns', 'POST', campaign);
 
@@ -384,6 +394,21 @@ class EmailMarketingApp {
         } catch (error) {
             // Error already handled in apiRequest
         }
+    }
+
+    updateCampaignListsCheckboxes() {
+        const container = document.getElementById('contact-lists-checkboxes-campain');
+        if (!container) return;
+        if (this.contactLists.length === 0) {
+            container.innerHTML = '<p class="empty-state">No hay listas disponibles</p>';
+            return;
+        }
+        container.innerHTML = this.contactLists.map(list => `
+        <div class="list-checkbox">
+            <input type="checkbox" id="campain-list-${list.id}" value="${list.id}" name="lists">
+            <label for="campain-list-${list.id}">${list.name}</label>
+        </div>
+    `).join('');
     }
     async loadContactListsFromAPI() {
         this.contactLists = await this.apiRequest('contact-lists');
@@ -1368,12 +1393,15 @@ class EmailMarketingApp {
         await this.loadContactListMembersFromAPI();
         this.loadContactLists();
         this.updateStats();
+        // Después eliminar los contactos deselecciono los chebox y oculto el panel BULK
+        document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = false);
+        this.updateBulkActions();
 
         this.showToast('success', 'Contactos eliminados', `${selectedContacts.length} contactos eliminados.`);
     }
     async deleteContact(id) {
         if (confirm('¿Estás seguro de que quieres eliminar este contacto?')) {
-           // this.contacts = this.contacts.filter(c => c.id !== id);
+            // this.contacts = this.contacts.filter(c => c.id !== id);
             try {
                 await this.apiRequest(`contacts/${id}`, 'DELETE');
             } catch (error) {
