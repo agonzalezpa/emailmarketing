@@ -69,119 +69,118 @@ try {
 
     $pdo = createPdoConnection();
 
-    // --- LÓGICA DE LÍMITE DIARIO ---
-    $dailyLimit = 200;
-    $currentDay = date('Y-m-d');
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM campaign_recipients WHERE DATE(sent_at) = ? AND status = 'sent'");
-    $stmt->execute([$currentDay]);
-    $sentToday = (int)$stmt->fetchColumn();
-    file_put_contents(__DIR__ . '/email_cron.log', "Correos enviados hoy ($currentDay): $sentToday\n", FILE_APPEND);
+    // --- OBTENER CAMPAÑAS ACTIVAS (una por sender) ---
 
-    if ($sentToday >= $dailyLimit) {
-        file_put_contents(__DIR__ . '/email_cron.log', "Límite diario ($dailyLimit) alcanzado. Deteniendo.\n\n", FILE_APPEND);
+    $campaignsStmt = $pdo->query("
+    SELECT MIN(id) as campaign_id, sender_id
+    FROM campaigns
+    WHERE status = 'sending'
+    GROUP BY sender_id
+");
+    $campaigns = $campaignsStmt->fetchAll();
+    $pdo = null;
+    if (empty($campaigns)) {
+        file_put_contents(__DIR__ . '/email_cron.log', "No hay campañas activas para procesar.\n\n", FILE_APPEND);
         exit;
     }
 
-    // --- LÓGICA DE RITMO Y CÁLCULO DE LOTE ---
     $secondsInDay = 86400;
     $secondsElapsed = time() - strtotime('today midnight');
-    $idealSentCount = floor(($secondsElapsed / $secondsInDay) * $dailyLimit);
-    $batchLimit = $idealSentCount - $sentToday;
-    $remainingForDay = $dailyLimit - $sentToday;
-    $batchLimit = min($batchLimit, $remainingForDay);
-    file_put_contents(__DIR__ . '/email_cron.log', "Ideal a enviar: $idealSentCount. Lote calculado: $batchLimit.\n", FILE_APPEND);
+    $dailyLimit = 200; // Por campaña
 
-    if ($batchLimit <= 0) {
-        file_put_contents(__DIR__ . '/email_cron.log', "No es necesario enviar correos ahora (ritmo correcto).\n\n", FILE_APPEND);
-        exit;
-    }
+    foreach ($campaigns as $camp) {
+        $pdo = createPdoConnection();
+        $totalProcesados = 0; // Reiniciar contador por campaña
+        $campaignId = $camp['campaign_id'];
+        $senderId = $camp['sender_id'];
 
-    // --- OBTENCIÓN DE DESTINATARIOS ---
-    file_put_contents(__DIR__ . '/email_cron.log', "Buscando destinatarios en la base de datos...\n", FILE_APPEND);
-    $stmt = $pdo->prepare("
+        // 1. Correos enviados hoy por esta campaña
+        $currentDay = date('Y-m-d');
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND DATE(sent_at) = ? AND status = 'sent'");
+        $stmt->execute([$campaignId, $currentDay]);
+        $sentToday = (int)$stmt->fetchColumn();
+
+        // 2. Calcula el ritmo ideal y lote para esta campaña
+        $idealSentCount = floor(($secondsElapsed / $secondsInDay) * $dailyLimit);
+        $batchLimit = $idealSentCount - $sentToday;
+        $remainingForDay = $dailyLimit - $sentToday;
+        $batchLimit = min($batchLimit, $remainingForDay);
+
+        file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId (sender $senderId): enviados hoy $sentToday, ideal hasta ahora $idealSentCount, lote $batchLimit\n", FILE_APPEND);
+
+        if ($batchLimit <= 0) {
+            file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId  tiene ritmo correcto. Saltando.\n", FILE_APPEND);
+            continue;
+        }
+        // Obtener el sender UNA SOLA VEZ por campaña
+        $senderStmt = $pdo->prepare("SELECT * FROM senders WHERE id = ?");
+        $senderStmt->execute([$senderId]);
+        $sender = $senderStmt->fetch();
+
+        if (!$sender) {
+            file_put_contents(__DIR__ . '/email_cron.log', "Remitente con ID $senderId no encontrado para campaña $campaignId.\n", FILE_APPEND);
+            continue;
+        }
+
+        // 3. Obtén los destinatarios pendientes para esta campaña
+        $stmt = $pdo->prepare("
         SELECT cr.*, c.email, c.name, cmp.subject, cmp.html_content, cmp.sender_id
         FROM campaign_recipients cr
         JOIN contacts c ON cr.contact_id = c.id
         JOIN campaigns cmp ON cr.campaign_id = cmp.id
-        WHERE (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
+        WHERE cr.campaign_id = ?
+          AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
         ORDER BY cr.id ASC
         LIMIT ?
     ");
-    $stmt->bindValue(1, $batchLimit, PDO::PARAM_INT);
-    $stmt->execute();
-    $recipients = $stmt->fetchAll();
-    file_put_contents(__DIR__ . '/email_cron.log', "Se encontraron " . count($recipients) . " destinatarios para procesar.\n", FILE_APPEND);
+        $stmt->execute([$campaignId, $batchLimit]);
+        $recipients = $stmt->fetchAll();
 
-    if (empty($recipients)) {
-        file_put_contents(__DIR__ . '/email_cron.log', "No hay correos pendientes en la cola. Finalizando.\n\n", FILE_APPEND);
-        exit;
-    }
-    
-    // Cerramos la conexión inicial, ya que no la usaremos más antes del bucle
-    $pdo = null;
+        file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId: Se encontraron " . count($recipients) . " destinatarios para procesar.\n", FILE_APPEND);
+        // Cierra la conexión principal antes del envío masivo
+        $pdo = null;
 
-    // --- BUCLE DE ENVÍO ---
-    $processedCount = 0;
-    foreach ($recipients as $recipient) {
-        try {
-            // **LA CORRECCIÓN CLAVE: RECONECTAR EN CADA ITERACIÓN**
-            $loopPdo = createPdoConnection();
+        // --- BUCLE DE ENVÍO POR CAMPAÑA ---
+        foreach ($recipients as $recipient) {
+            try {
 
-            $senderStmt = $loopPdo->prepare("SELECT * FROM senders WHERE id = ?");
-            $senderStmt->execute([$recipient['sender_id']]);
-            $sender = $senderStmt->fetch();
+                $loopPdo = createPdoConnection();
 
-            if (!$sender) {
-                $errorMessage = "Remitente con ID {$recipient['sender_id']} no encontrado.";
-                $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'failed', retry_count = retry_count + 1, error_message = ? WHERE id = ?");
-                $updateStmt->execute([$errorMessage, $recipient['id']]);
+                $attachmentPath = __DIR__ . '/catalogo.pdf';
+                $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
+                $finalHtmlContent =  $recipient['html_content'] . $trackingPixel;
+
+                $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $recipient['subject'], $finalHtmlContent, file_exists($attachmentPath) ? $attachmentPath : null);
+
+                if ($emailSent['success']) {
+                    $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'sent', sent_at = CURRENT_TIMESTAMP, error_message = NULL WHERE id = ?");
+                    $updateStmt->execute([$recipient['id']]);
+                } else {
+                    $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'failed', retry_count = retry_count + 1, error_message = ? WHERE id = ?");
+                    $updateStmt->execute([$emailSent['error'], $recipient['id']]);
+                }
+                $totalProcesados++;
+
+                $loopPdo = null;
+            } catch (PDOException $e) {
+                $errorMessage = "Error de BD procesando destinatario ID {$recipient['id']}: " . $e->getMessage();
+                file_put_contents(__DIR__ . '/email_cron.log', $errorMessage . "\n", FILE_APPEND);
                 continue;
             }
-
-            $attachmentPath = __DIR__ . '/catalogo.pdf';
-             // 1. Crear el pixel de seguimiento con el ID del destinatario
-            $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
-            $finalHtmlContent =  $recipient['html_content']. $trackingPixel;
-           
-            $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $recipient['subject'], $finalHtmlContent, file_exists($attachmentPath) ? $attachmentPath : null);
-
-            if ($emailSent['success']) {
-                $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'sent', sent_at = CURRENT_TIMESTAMP, error_message = NULL WHERE id = ?");
-                $updateStmt->execute([$recipient['id']]);
-            } else {
-                $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'failed', retry_count = retry_count + 1, error_message = ? WHERE id = ?");
-                $updateStmt->execute([$emailSent['error'], $recipient['id']]);
-            }
-            $processedCount++;
-            
-            // Cerramos la conexión de este ciclo
-            $loopPdo = null;
-
-        } catch (PDOException $e) {
-            // Si hay un error de DB en esta iteración, lo registramos y continuamos con el siguiente correo
-            $errorMessage = "Error de BD procesando destinatario ID {$recipient['id']}: " . $e->getMessage();
-            file_put_contents(__DIR__ . '/email_cron.log', $errorMessage . "\n", FILE_APPEND);
-            continue;
         }
-    }
-
-    // --- Marcar campañas como completadas ---
-    // **RECONECTAR UNA ÚLTIMA VEZ para asegurar la conexión**
-    $finalPdo = createPdoConnection();
-    $campaignIds = array_unique(array_column($recipients, 'campaign_id'));
-    foreach ($campaignIds as $campaignId) {
-        $check = $finalPdo->prepare("SELECT COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND (status = 'pending' OR (status = 'failed' AND retry_count < 3))");
+        $pdo = createPdoConnection();
+        file_put_contents(__DIR__ . '/email_cron.log', "Cron finalizado. Correos procesados en este lote: $totalProcesados.\n\n", FILE_APPEND);
+        echo "\n[OK] Procesado: $totalProcesados correos a las " . date('Y-m-d H:i:s') . "\n";
+        // --- Marcar campaña como completada si corresponde ---
+        $check = $pdo->prepare("SELECT COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND (status = 'pending' OR (status = 'failed' AND retry_count < 3))");
         $check->execute([$campaignId]);
         $remaining = $check->fetchColumn();
-
         if ($remaining == 0) {
-            $updateCampaignStmt = $finalPdo->prepare("UPDATE campaigns SET status = 'sent' WHERE id = ? AND status = 'sending'");
+            $updateCampaignStmt = $pdo->prepare("UPDATE campaigns SET status = 'sent' WHERE id = ? AND status = 'sending'");
             $updateCampaignStmt->execute([$campaignId]);
         }
-    }
-
-    file_put_contents(__DIR__ . '/email_cron.log', "Cron finalizado. Correos procesados en este lote: $processedCount.\n\n", FILE_APPEND);
-    echo "\n[OK] Procesado: $processedCount correos a las " . date('Y-m-d H:i:s') . "\n";
+        $pdo = null;
+    } //FIN DEL 1ER FOR
 
 } catch (Throwable $e) {
     // Captura cualquier error fatal que no haya sido manejado antes
@@ -189,4 +188,3 @@ try {
     file_put_contents(__DIR__ . '/email_cron.log', $errorMessage . "\n", FILE_APPEND);
     die($errorMessage); // Detiene la ejecución mostrando el error
 }
-
