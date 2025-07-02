@@ -693,12 +693,36 @@ class EmailMarketingApp {
             sender = null;
         }
         const subject = document.getElementById('campaign-subject').value;
-        const activeContacts = this.contacts.filter(c => c.status === 'active').length;
+
+        // Obtén los IDs de listas seleccionadas
+        const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes-campain input[name="lists"]:checked'))
+            .map(cb => parseInt(cb.value));
+
+        let recipientIds = [];
+
+        if (selectedLists.length > 0) {
+            // Filtra los miembros de las listas seleccionadas
+            recipientIds = this.contactListMembers
+                .filter(m => selectedLists.includes(m.list_id))
+                .map(m => m.contact_id);
+
+            // Elimina duplicados
+            recipientIds = [...new Set(recipientIds)];
+
+            // Filtra solo contactos activos
+            recipientIds = recipientIds.filter(id => {
+                const contact = this.contacts.find(c => c.id === id);
+                return contact && contact.status === 'active';
+            });
+        } else {
+            // Si no hay listas seleccionadas, todos los contactos activos
+            recipientIds = this.contacts.filter(c => c.status === 'active').map(c => c.id);
+        }
 
         document.getElementById('summary-name').textContent = name;
         document.getElementById('summary-sender').textContent = sender ? `${sender.name} (${sender.email})` : '';
         document.getElementById('summary-subject').textContent = subject;
-        document.getElementById('summary-recipients').textContent = activeContacts;
+        document.getElementById('summary-recipients').textContent = recipientIds.length;
 
         // Update preview with proper HTML rendering
         const previewContainer = document.getElementById('email-preview-content');
