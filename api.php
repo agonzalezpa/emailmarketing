@@ -102,7 +102,7 @@ class EmailMarketingAPI
                     $this->handleSendTest();
                     break;
                 case 'send-campaign':
-                    $this->handleSendCampaign($id);
+                    $this->handleSendCampaign($method);
                     break;
                 case 'stats':
                     $this->handleStats();
@@ -542,7 +542,7 @@ class EmailMarketingAPI
 
         $this->sendResponse(['message' => 'Contact deleted successfully']);
     }
-   
+
 
     private function importContacts()
     {
@@ -1018,6 +1018,52 @@ class EmailMarketingAPI
         $this->sendResponse(['id' => $campaignId, 'message' => 'Campaign created successfully']);
     }
 
+    private function updateCampaign($id)
+    {
+        if (!$id) {
+            $this->sendError(400, 'Campaign ID required');
+        }
+
+        $data = $this->getJsonInput();
+
+        $pdo = $this->getConnection();
+
+        // Validate sender exists if sender_id is provided
+        if (isset($data['sender_id'])) {
+            $stmt = $pdo->prepare("SELECT id FROM senders WHERE id = ? AND is_active = 1");
+            $stmt->execute([$data['sender_id']]);
+            if (!$stmt->fetch()) {
+                $this->sendError(400, 'Invalid sender');
+            }
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE campaigns SET 
+                name = ?, 
+                subject = ?, 
+                html_content = ?, 
+                text_content = ?, 
+                sender_id = ?, 
+                template_id = ?, 
+                status = ?, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+
+        $stmt->execute([
+            $data['name'],
+            $data['subject'],
+            $data['html_content'],
+            $data['text_content'] ?? strip_tags($data['html_content']),
+            $data['sender_id'],
+            $data['template_id'] ?? null,
+            $data['status'] ?? 'draft',
+            $id
+        ]);
+
+        $this->sendResponse(['message' => 'Campaign updated successfully']);
+    }
+
 
 
     private function handleSendTest()
@@ -1072,35 +1118,65 @@ class EmailMarketingAPI
     }
 
 
-    //pone la campaña en estado enviandodese para que el CRON envie poco a poco los correos y evitar que se consideren spam o se bloquee el envio cuando son miles de correos
-    private function handleSendCampaign($campaignId)
+    //Crea y pone la campaña en estado enviandose para que el CRON envie poco a poco los 
+    //correos y evitar que se consideren spam o se bloquee el envio cuando son miles de correos
+    private function handleSendCampaign($method)
     {
-        if (!$campaignId) {
-            $this->sendError(400, 'Campaign ID required');
-        }
+        if ($method != 'POST')
+            return;
+
+        $data = $this->getJsonInput();
+
+        // Validar campos requeridos para crear la campaña
+        $required = ['name', 'subject', 'html_content', 'sender_id'];
+        $this->validateRequiredFields($data, $required);
 
         $pdo = $this->getConnection();
 
-        // Obtener campaña con su remitente
-        $stmt = $pdo->prepare("
-        SELECT c.*, s.* FROM campaigns c 
-        JOIN senders s ON c.sender_id = s.id 
-        WHERE c.id = ? AND c.status = 'draft'
-    ");
-        $stmt->execute([$campaignId]);
-        $campaign = $stmt->fetch();
-
-        if (!$campaign) {
-            $this->sendError(400, 'Campaign not found or already sent');
+        // Validar que el remitente existe y está activo
+        $stmt = $pdo->prepare("SELECT * FROM senders WHERE id = ? AND is_active = 1");
+        $stmt->execute([$data['sender_id']]);
+        $sender = $stmt->fetch();
+        if (!$sender) {
+            $this->sendError(400, 'Invalid sender');
         }
 
-        // Obtener contactos activos
-        $stmt = $pdo->prepare("SELECT * FROM contacts WHERE status = 'active'");
-        $stmt->execute();
-        $contacts = $stmt->fetchAll();
+        // Crear la campaña en estado 'draft'
+        $stmt = $pdo->prepare("
+        INSERT INTO campaigns (name, subject, html_content, text_content, sender_id, template_id, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+        $stmt->execute([
+            $data['name'],
+            $data['subject'],
+            $data['html_content'],
+            $data['text_content'] ?? strip_tags($data['html_content']),
+            $data['sender_id'],
+            $data['template_id'] ?? null,
+            'draft'
+        ]);
+        $campaignId = $pdo->lastInsertId();
+
+        // Obtener contactos destinatarios
+        if (!empty($data['list_ids']) && is_array($data['list_ids'])) {
+            // Solo contactos activos de las listas seleccionadas
+            $in = str_repeat('?,', count($data['list_ids']) - 1) . '?';
+            $sql = "SELECT DISTINCT c.* 
+                FROM contacts c
+                JOIN contact_list_members clm ON c.id = clm.contact_id
+                WHERE clm.list_id IN ($in) AND c.status = 'active'";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($data['list_ids']);
+            $contacts = $stmt->fetchAll();
+        } else {
+            // Todos los contactos activos
+            $stmt = $pdo->prepare("SELECT * FROM contacts WHERE status = 'active'");
+            $stmt->execute();
+            $contacts = $stmt->fetchAll();
+        }
 
         if (empty($contacts)) {
-            $this->sendError(400, 'No active contacts found');
+            $this->sendError(400, 'No active contacts found for this campaign');
         }
 
         // Actualizar estado de la campaña
@@ -1111,20 +1187,23 @@ class EmailMarketingAPI
     ");
         $stmt->execute([count($contacts), $campaignId]);
 
-        // Insertar contactos en campaign_recipients como 'pending'
-        $stmt = $pdo->prepare("
-        INSERT INTO campaign_recipients (campaign_id, contact_id, status) VALUES (?, ?, 'pending')
-    ");
-
+        // Registrar destinatarios en campaign_recipients
+        $stmtRecipient = $pdo->prepare("INSERT INTO campaign_recipients (campaign_id, contact_id, status) VALUES (?, ?, 'pending')");
         foreach ($contacts as $contact) {
-            $stmt->execute([$campaignId, $contact['id']]);
+            try {
+                $stmtRecipient->execute([$campaignId, $contact['id']]);
+            } catch (Exception $e) {
+                // Si ya existe, ignorar
+            }
         }
 
-        // Confirmar que la campaña fue agendada correctamente
+        // Aquí puedes iniciar el proceso de envío real (por cron o en background)
+        // Por ahora solo responde que la campaña fue creada y puesta en cola para envío
+
         $this->sendResponse([
-            'message' => 'Campaign queued for sending by background process',
-            'queued_recipients' => count($contacts),
-            'campaign_id' => $campaignId
+            'id' => $campaignId,
+            'message' => 'Campaign created and scheduled for sending',
+            'total_recipients' => count($contacts)
         ]);
     }
 
@@ -1213,44 +1292,7 @@ class EmailMarketingAPI
         }
     }
 
-    private function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachmentPath = null)
-    {
-        try {
-            $mail = new PHPMailer(true);
-
-            $mail->isSMTP();
-            $mail->Host = $sender['smtp_host'];
-            $mail->SMTPAuth = true;
-            $mail->Username = $sender['smtp_username'];
-            $mail->Password = $sender['smtp_password'];
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port = 465;
-
-            $mail->setFrom($sender['email'], $sender['name']);
-            $mail->addAddress($toEmail, $toName);
-            $mail->addReplyTo($sender['email'], $sender['name']);
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body = $htmlContent;
-
-            // Opcional: adjunto
-            if ($attachmentPath && file_exists($attachmentPath)) {
-                $mail->addAttachment($attachmentPath, basename($attachmentPath));
-            }
-
-            // Pixel de seguimiento
-            $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/' . $recipient['id'] . '" width="1" height="1" style="display:none;"/>';
-            $mail->Body .= $trackingPixel;
-
-            $mail->AltBody = strip_tags($htmlContent);
-
-            $mail->send();
-            return ['success' => true];
-        } catch (Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
-    }
+   
 
     private function testSmtpConnection($config)
     {

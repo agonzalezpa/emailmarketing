@@ -382,10 +382,11 @@ class EmailMarketingApp {
 
         console.log('Campaña a enviar:', campaign); // Debe mostrar list_ids si hay listas seleccionadas
         try {
-            const result = await this.apiRequest('campaigns', 'POST', campaign);
-
+            // const result = await this.apiRequest('campaigns', 'POST', campaign);
+            const result = await this.apiRequest('send-campaign', 'POST', campaign);
+            // Ya está creada y enviada, puedes mostrar el toast y refrescar la UI
             // Send the campaign
-            await this.apiRequest(`send-campaign/${result.id}`, 'POST');
+            //await this.apiRequest(`send-campaign/${result.id}`, 'POST');
 
             this.loadCampaigns();
             this.updateStats();
