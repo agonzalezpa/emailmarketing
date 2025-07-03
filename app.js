@@ -69,13 +69,7 @@ class EmailMarketingApp {
 
         // Contact management
 
-        document.getElementById('import-contacts-btn').addEventListener('click', () => {
-            this.updateCSVListsCheckboxes();
-            this.openModal('import-csv-modal');
-        });
-        document.getElementById('csv-import-form').addEventListener('submit', (e) => {
-            emailApp.handleCsvImport(e);
-        });
+
         document.getElementById('add-contact-btn').addEventListener('click', () => {
             this.updateContactListsCheckboxes();
             this.openModal('contact-modal');
@@ -128,14 +122,17 @@ class EmailMarketingApp {
         });
 
         // Import functionality
-        document.getElementById('import-contacts-btn').addEventListener('click', () => {
-            this.openModal('import-modal');
-        });
-
+        
         document.getElementById('csv-file').addEventListener('change', (e) => {
             this.handleFileSelect(e);
         });
-
+        document.getElementById('import-contacts-btn').addEventListener('click', () => {
+            this.updateCSVListsCheckboxes();
+            this.openModal('import-csv-modal');
+        });
+        document.getElementById('csv-import-form').addEventListener('submit', (e) => {
+            emailApp.handleCsvImport(e);
+        });
 
 
 
@@ -1502,7 +1499,7 @@ class EmailMarketingApp {
                     return;
                 }
 
-                document.getElementById('import-next-step').disabled = false;
+               // document.getElementById('import-next-step').disabled = false;
             } catch (error) {
                 this.showToast('error', 'Error de archivo', error.message);
             }
