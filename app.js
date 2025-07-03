@@ -1504,7 +1504,7 @@ class EmailMarketingApp {
 
                 document.getElementById('import-next-step').disabled = false;
             } catch (error) {
-                this.showToast('error', 'Error de archivo', 'No se pudo leer el archivo CSV.');
+                this.showToast('error', 'Error de archivo', error.message);
             }
         };
         reader.readAsText(file);
