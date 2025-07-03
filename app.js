@@ -122,7 +122,7 @@ class EmailMarketingApp {
         });
 
         // Import functionality
-        
+
         document.getElementById('csv-file').addEventListener('change', (e) => {
             this.handleFileSelect(e);
         });
@@ -357,7 +357,8 @@ class EmailMarketingApp {
                 this.loadContacts();
                 this.updateStats();
                 this.closeModal('import-csv-modal');
-
+                this.loadContactListsFromAPI();
+                this.loadContactListMembersFromAPI();
                 const message = `${result.data.imported} contactos importados correctamente.`;
                 const errorMessage = result.data.errors.length > 0 ?
                     ` ${result.data.errors.length} errores encontrados.` : '';
@@ -1154,11 +1155,11 @@ class EmailMarketingApp {
         });
 
         // Update import dropdown
-/*const importListSelect = document.getElementById('import-list-select');
-        importListSelect.innerHTML = '<option value="">No agregar a ninguna lista</option>';
-        this.contactLists.forEach(list => {
-            importListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
-        });*/
+        /*const importListSelect = document.getElementById('import-list-select');
+                importListSelect.innerHTML = '<option value="">No agregar a ninguna lista</option>';
+                this.contactLists.forEach(list => {
+                    importListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+                });*/
 
         // Update contact form checkboxes
         this.updateContactListsCheckboxes();
@@ -1499,7 +1500,7 @@ class EmailMarketingApp {
                     return;
                 }
 
-               // document.getElementById('import-next-step').disabled = false;
+                // document.getElementById('import-next-step').disabled = false;
             } catch (error) {
                 this.showToast('error', 'Error de archivo', error.message);
             }
@@ -1584,7 +1585,7 @@ class EmailMarketingApp {
         `;
     }
 
-   
+
 
     async deleteList(id) {
         if (confirm('¿Estás seguro de que quieres eliminar esta lista? Los contactos no se eliminarán.')) {
