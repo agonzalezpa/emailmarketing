@@ -1154,11 +1154,11 @@ class EmailMarketingApp {
         });
 
         // Update import dropdown
-        const importListSelect = document.getElementById('import-list-select');
+/*const importListSelect = document.getElementById('import-list-select');
         importListSelect.innerHTML = '<option value="">No agregar a ninguna lista</option>';
         this.contactLists.forEach(list => {
             importListSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
-        });
+        });*/
 
         // Update contact form checkboxes
         this.updateContactListsCheckboxes();
@@ -1584,96 +1584,7 @@ class EmailMarketingApp {
         `;
     }
 
-    importContacts() {
-        if (!this.csvData) return;
-
-        const selectedListId = document.getElementById('import-list-select').value;
-        const createNewList = document.getElementById('create-new-list-checkbox').checked;
-        const newListName = document.getElementById('new-list-name').value;
-
-        let targetListId = selectedListId;
-
-        // Create new list if requested
-        if (createNewList && newListName) {
-            const newList = {
-                id: Date.now(),
-                name: newListName,
-                description: `Lista creada durante importación de ${this.csvData.length} contactos`,
-                created_at: new Date().toISOString(),
-                is_active: true
-            };
-
-            this.contactLists.push(newList);
-            localStorage.setItem('contactLists', JSON.stringify(this.contactLists));
-            targetListId = newList.id;
-        }
-
-        let imported = 0;
-        let skipped = 0;
-        const errors = [];
-
-        this.csvData.forEach((row, index) => {
-            const email = row.email?.trim();
-            const name = row.name?.trim();
-
-            if (!email || !name) {
-                errors.push(`Fila ${index + 2}: Email o nombre faltante`);
-                return;
-            }
-
-            // Check if email already exists
-            if (this.contacts.some(c => c.email === email)) {
-                skipped++;
-                return;
-            }
-
-            // Create contact
-            const contact = {
-                id: Date.now() + Math.random(),
-                name: name,
-                email: email,
-                status: row.status || 'active',
-                created_at: new Date().toISOString()
-            };
-
-            this.contacts.push(contact);
-
-            // Add to list if specified
-            if (targetListId) {
-                this.contactListMembers.push({
-                    id: Date.now() + Math.random(),
-                    contact_id: contact.id,
-                    list_id: parseInt(targetListId),
-                    added_at: new Date().toISOString()
-                });
-            }
-
-            imported++;
-        });
-
-        // Save data
-        localStorage.setItem('contacts', JSON.stringify(this.contacts));
-        localStorage.setItem('contactListMembers', JSON.stringify(this.contactListMembers));
-
-        // Refresh UI
-        this.loadContacts();
-        this.loadContactLists();
-        this.updateStats();
-        this.closeModal('import-modal');
-
-        // Show results
-        let message = `${imported} contactos importados correctamente.`;
-        if (skipped > 0) message += ` ${skipped} emails duplicados omitidos.`;
-        if (errors.length > 0) message += ` ${errors.length} errores encontrados.`;
-
-        this.showToast('success', 'Importación completada', message);
-
-        // Reset import state
-        this.currentImportStep = 1;
-        this.csvData = null;
-        document.getElementById('csv-file').value = '';
-        this.updateImportStep();
-    }
+   
 
     async deleteList(id) {
         if (confirm('¿Estás seguro de que quieres eliminar esta lista? Los contactos no se eliminarán.')) {
