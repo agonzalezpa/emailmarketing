@@ -71,7 +71,7 @@ class EmailMarketingApp {
 
         document.getElementById('import-contacts-btn').addEventListener('click', () => {
             this.updateCSVListsCheckboxes();
-            this.openModal('contact-modal');
+            this.openModal('import-csv-modal');
         });
         document.getElementById('csv-import-form').addEventListener('submit', (e) => {
             emailApp.handleCsvImport(e);
