@@ -574,6 +574,7 @@
         </div>
     </div>
 
+    <!-- CSV Import Modal -->
     <div class="modal" id="import-csv-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -586,16 +587,22 @@
                 <div class="form-group">
                     <label for="csv-file">Archivo CSV</label>
                     <input type="file" id="csv-file" name="csv_file" accept=".csv" required>
-                    <small style="color: #6B7280; display: block; margin-top: 0.5rem;">
-                        El archivo debe contener las columnas: name, email, status (opcional)
+                    <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                        El archivo debe contener las columnas: name(opcional), email
                     </small>
                 </div>
+                <div class="form-group">
+                    <label>Agregar contactos a listas</label>
+                    <div id="import-lists-checkboxes">
+                        <!-- Aquí se insertarán los checkboxes de listas dinámicamente -->
+                    </div>
+                </div>
                 <div class="csv-format-info"
-                    style="background: #F9FAFB; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    style="background: var(--background); padding: 1rem; border-radius: var(--radius); margin: 1rem 0;">
                     <h4 style="margin-bottom: 0.5rem;">Formato requerido:</h4>
-                    <pre style="font-size: 0.875rem; margin: 0; color: #6B7280;">name,email,status
-Juan Pérez,juan@example.com,active
-María García,maria@example.com,active</pre>
+                    <pre style="font-size: 0.875rem; margin: 0; color: var(--text-secondary);">name,email,status
+                         Pérez,juan@example.com
+                         García,maria@example.com</pre>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" data-modal="import-csv-modal">Cancelar</button>

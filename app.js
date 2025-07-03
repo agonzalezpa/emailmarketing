@@ -68,6 +68,14 @@ class EmailMarketingApp {
         });
 
         // Contact management
+
+        document.getElementById('import-contacts-btn').addEventListener('click', () => {
+            this.updateCSVListsCheckboxes();
+            this.openModal('contact-modal');
+        });
+        document.getElementById('csv-import-form').addEventListener('submit', (e) => {
+            emailApp.handleCsvImport(e);
+        });
         document.getElementById('add-contact-btn').addEventListener('click', () => {
             this.updateContactListsCheckboxes();
             this.openModal('contact-modal');
@@ -328,8 +336,17 @@ class EmailMarketingApp {
             return;
         }
 
+        // Obtén las listas seleccionadas
+        const selectedLists = Array.from(document.querySelectorAll('#import-lists-checkboxes input[name="lists"]:checked'))
+            .map(cb => parseInt(cb.value));
+
         const formData = new FormData();
         formData.append('csv_file', file);
+
+        // Adjunta las listas seleccionadas al FormData
+        if (selectedLists.length > 0) {
+            formData.append('list_ids', JSON.stringify(selectedLists));
+        }
 
         try {
             const response = await fetch(`${this.apiUrl}/contacts?import=1`, {
@@ -769,7 +786,7 @@ class EmailMarketingApp {
 
         // Oculta el spinner
         if (loading) loading.style.display = 'none';
-        
+
     }
 
     handleEditorCommand(command) {
@@ -939,6 +956,22 @@ class EmailMarketingApp {
 
     updateContactListsCheckboxes() {
         const container = document.getElementById('contact-lists-checkboxes');
+        if (!container) return;
+
+        if (this.contactLists.length === 0) {
+            container.innerHTML = '<p class="empty-state">No hay listas disponibles</p>';
+            return;
+        }
+
+        container.innerHTML = this.contactLists.map(list => `
+        <div class="list-checkbox">
+            <input type="checkbox" id="list-${list.id}" value="${list.id}" name="lists">
+            <label for="list-${list.id}">${list.name}</label>
+        </div>
+    `).join('');
+    }
+    updateCSVListsCheckboxes() {
+        const container = document.getElementById('import-lists-checkboxes');
         if (!container) return;
 
         if (this.contactLists.length === 0) {

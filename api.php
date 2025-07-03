@@ -215,8 +215,8 @@ class EmailMarketingAPI
                 break;
             case 'POST':
                 if (isset($_GET['import'])) {
-                    //$this->importContacts();
-                    $this->handleImportExcel();
+                    $this->importContacts();
+                    // $this->handleImportExcel();
                 } else {
                     $this->createContact();
                 }
@@ -579,9 +579,12 @@ class EmailMarketingAPI
     }
 
 
+    /**
+     * Importar contactos desde un csv
+     * @return void
+     */
     private function importContacts()
     {
-
         if (!isset($_FILES['csv_file'])) {
             $this->sendError(400, 'Archivo CSV requerido.');
         }
@@ -599,6 +602,13 @@ class EmailMarketingAPI
         $allowedTypes = ['text/csv', 'text/plain', 'application/vnd.ms-excel'];
         if (!in_array($mimeType, $allowedTypes)) {
             $this->sendError(400, 'Tipo de archivo inválido. Sube un archivo CSV.');
+        }
+
+        // Obtener listas seleccionadas (puede venir como JSON string o array)
+        $listIds = [];
+        if (isset($_POST['list_ids'])) {
+            $listIds = is_array($_POST['list_ids']) ? $_POST['list_ids'] : json_decode($_POST['list_ids'], true);
+            if (!is_array($listIds)) $listIds = [];
         }
 
         // Abrir archivo para lectura
@@ -619,34 +629,30 @@ class EmailMarketingAPI
 
         // Normalizar encabezados
         $header = array_map(fn($col) => strtolower(trim($col)), $header);
-        $requiredColumns = ['name', 'email'];
-        foreach ($requiredColumns as $col) {
-            if (!in_array($col, $header)) {
-                fclose($handle);
-                $this->sendError(400, "Falta la columna requerida: $col");
-            }
+        $emailIndex = array_search('email', $header);
+        $nameIndex = array_search('name', $header);
+        $statusIndex = array_search('status', $header);
+
+        if ($emailIndex === false) {
+            fclose($handle);
+            $this->sendError(400, "Falta la columna requerida: email");
         }
 
-        // Indices
-        $nameIndex = array_search('name', $header);
-        $emailIndex = array_search('email', $header);
-        // $statusIndex = array_search('status', $header);
-
         $rowNumber = 1;
+        $newContactIds = [];
+
         while (($row = fgetcsv($handle)) !== false) {
             $rowNumber++;
-
             if (empty(array_filter($row))) continue; // Saltar filas vacías
 
-            $name = trim($row[$nameIndex] ?? '');
             $email = trim($row[$emailIndex] ?? '');
-            // $status = strtolower(trim($row[$statusIndex] ?? 'active'));
+            $name = $nameIndex !== false ? trim($row[$nameIndex] ?? '') : '';
+            $status = $statusIndex !== false ? strtolower(trim($row[$statusIndex] ?? 'active')) : 'active';
 
-            if (!$name) {
-                $errors[] = "Fila $rowNumber: Falta el nombre.";
+            if (!$email) {
+                $errors[] = "Fila $rowNumber: Falta el email.";
                 continue;
             }
-
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = "Fila $rowNumber: Email inválido: $email.";
                 continue;
@@ -658,22 +664,46 @@ class EmailMarketingAPI
             }
 
             try {
+                // Verifica si ya existe el contacto
                 $stmt = $pdo->prepare("SELECT id FROM contacts WHERE email = ?");
                 $stmt->execute([$email]);
-                if ($stmt->fetch()) {
+                $existing = $stmt->fetchColumn();
+
+                if ($existing) {
                     $errors[] = "Fila $rowNumber: Email ya existe: $email.";
                     continue;
                 }
 
                 $stmt = $pdo->prepare("INSERT INTO contacts (name, email, status) VALUES (?, ?, ?)");
                 $stmt->execute([$name, $email, $status]);
+                $contactId = $pdo->lastInsertId();
                 $imported++;
+                $newContactIds[] = $contactId;
             } catch (Exception $e) {
                 $errors[] = "Fila $rowNumber: Error al importar $email: " . $e->getMessage();
             }
         }
 
         fclose($handle);
+
+        // Asignar contactos a listas seleccionadas
+        if (!empty($listIds) && !empty($newContactIds)) {
+            $stmtList = $pdo->prepare("INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+            foreach ($listIds as $listId) {
+                // Verifica que la lista exista (opcional)
+                $stmtCheck = $pdo->prepare("SELECT id FROM contact_lists WHERE id = ?");
+                $stmtCheck->execute([$listId]);
+                if ($stmtCheck->fetch()) {
+                    foreach ($newContactIds as $contactId) {
+                        try {
+                            $stmtList->execute([$listId, $contactId]);
+                        } catch (Exception $e) {
+                            // Ignorar errores de duplicado
+                        }
+                    }
+                }
+            }
+        }
 
         $this->sendResponse([
             'imported' => $imported,
