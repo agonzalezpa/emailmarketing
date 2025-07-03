@@ -325,10 +325,14 @@ class EmailMarketingApp {
     async handleCsvImport(e) {
         e.preventDefault();
 
+        const loading = document.getElementById('csv-import-loading');
+        if (loading) loading.style.display = 'inline';
+
         const fileInput = document.getElementById('csv-file');
         const file = fileInput.files[0];
 
         if (!file) {
+            if (loading) loading.style.display = 'none';
             this.showToast('error', 'Archivo requerido', 'Por favor selecciona un archivo CSV.');
             return;
         }
@@ -340,7 +344,6 @@ class EmailMarketingApp {
         const formData = new FormData();
         formData.append('csv_file', file);
 
-        // Adjunta las listas seleccionadas al FormData
         if (selectedLists.length > 0) {
             formData.append('list_ids', JSON.stringify(selectedLists));
         }
@@ -354,11 +357,14 @@ class EmailMarketingApp {
             const result = await response.json();
 
             if (result.success) {
-                this.loadContacts();
+                // Recarga datos desde la API
+                await this.loadContacts();
+                await this.loadContactListMembersFromAPI();
+                this.loadContactLists();
                 this.updateStats();
+
                 this.closeModal('import-csv-modal');
-                this.loadContactListsFromAPI();
-                this.loadContactListMembersFromAPI();
+
                 const message = `${result.data.imported} contactos importados correctamente.`;
                 const errorMessage = result.data.errors.length > 0 ?
                     ` ${result.data.errors.length} errores encontrados.` : '';
@@ -373,6 +379,8 @@ class EmailMarketingApp {
             }
         } catch (error) {
             this.showToast('error', 'Error de importación', 'No se pudo importar el archivo CSV.');
+        } finally {
+            if (loading) loading.style.display = 'none';
         }
     }
 
