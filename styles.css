@@ -859,15 +859,10 @@ body {
 .lists-header {
     margin-bottom: 1.5rem;
 }
-/*#lists-modal {
-    
-    width: 125%;
-    
-}*/
+
 .lists-container {
     max-height: 400px;
     overflow-y: auto;
-    width: 125%;
 }
 
 .list-item {
