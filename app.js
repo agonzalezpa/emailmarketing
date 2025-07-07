@@ -889,11 +889,11 @@ class EmailMarketingApp {
             this.showToast('error', 'Email requerido', 'Por favor ingresa un email para la prueba.');
             return;
         }
-
+        const htmlContent = tinymce.get('email-editor').getContent();
         const testData = {
             sender_id: document.getElementById('campaign-sender').value,
             subject: document.getElementById('campaign-subject').value,
-            html_content: document.getElementById('email-editor').innerHTML,
+            html_content: htmlContent,
             test_email: testEmail
         };
 
