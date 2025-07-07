@@ -1130,23 +1130,23 @@ class EmailMarketingAPI
     }
 
 
-function limpiarAsunto($asunto)
-{
-    $cadena = "Subject";
-    $longitud = strlen($cadena) + 2;
-    return substr(
-        iconv_mime_encode(
-            $cadena,
-            $asunto,
-            [
-                "input-charset" => "UTF-8",
-                "output-charset" => "UTF-8",
-            ]
-        ),
-        $longitud
-    );
-}
-    private function handleSendTest()
+    function limpiarAsunto($asunto)
+    {
+        $cadena = "Subject";
+        $longitud = strlen($cadena) + 2;
+        return substr(
+            iconv_mime_encode(
+                $cadena,
+                $asunto,
+                [
+                    "input-charset" => "UTF-8",
+                    "output-charset" => "UTF-8",
+                ]
+            ),
+            $longitud
+        );
+    }
+   private function handleSendTest()
 {
     $data = $this->getJsonInput();
 
@@ -1164,18 +1164,10 @@ function limpiarAsunto($asunto)
         $this->sendError(400, 'Remitente inválido o inactivo.');
     }
 
-    // Crear instancia PHPMailer
     $mail = new PHPMailer(true);
 
     try {
-        // --- CONFIGURACIÓN ESENCIAL ---
-        // 1. Establecer el CharSet a UTF-8 (¡Este es el ajuste clave!)
-        $mail->CharSet = 'UTF-8';
-        
-        // 2. PHPMailer generará Content-Type y otros encabezados automáticamente
-        $mail->isHTML(true);
-
-        // --- CONFIGURACIÓN SMTP ---
+        // --- CONFIGURACIÓN SMTP (como ya la tenías) ---
         $mail->isSMTP();
         $mail->Host = $sender['smtp_host'];
         $mail->SMTPAuth = true;
@@ -1184,39 +1176,45 @@ function limpiarAsunto($asunto)
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = 465;
 
+        // --- AJUSTES PARA PROBAR IMÁGENES EMBEBIDAS ---
+
+        // 1. Configuración base de PHPMailer
+        $mail->CharSet = 'UTF-8';
+        $mail->isHTML(true);
+
+        // 2. Incrusta las imágenes desde tu ruta local usando __DIR__
+        //    Esto asegura que la ruta siempre sea correcta sin importar desde dónde se ejecute el script.
+        $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+        $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+        $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
+
         // --- CONTENIDO DEL CORREO ---
+        // El tracking pixel se puede mantener, no interfiere.
         $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/24/1794" width="1" height="1" style="display:none;"/>';
 
-        // Variables para personalización (asumiendo que vienen en $data)
+        // Personalización de variables
         $variables = [
-            '{{name}}'  => isset($data['name']) ? $data['name'] : 'Usuario', // Valor por defecto
-            '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'], // Valor por defecto
+            '{{name}}'  => isset($data['name']) ? $data['name'] : 'Usuario de Prueba',
+            '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'],
         ];
 
         $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
+        
+        // Importante: El html_content que recibes ya debe usar los CIDs
         $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
 
-        // --- ARMADO DEL CORREO ---
+        // --- ARMADO Y ENVÍO DEL CORREO ---
         $mail->setFrom($sender['email'], $sender['name']);
         $mail->addAddress($data['test_email']);
-        
-        // 3. Asigna el asunto directamente. PHPMailer lo codifica por ti.
         $mail->Subject = $personalizedSubject;
-        
-        // El cuerpo ya está listo
         $mail->Body = $personalizedHtml . $trackingPixel;
 
-        // Opcional: Cuerpo de texto plano para clientes que no soportan HTML
-        // $mail->AltBody = 'Este es el cuerpo en texto plano para clientes de correo no-HTML';
-
-        // --- ENVÍO ---
         $mail->send();
 
-        $this->sendResponse(['success' => true, 'message' => 'Correo de prueba enviado correctamente']);
+        $this->sendResponse(['success' => true, 'message' => 'Correo de prueba enviado correctamente con imágenes incrustadas.']);
     } catch (Exception $e) {
-        // Usar error_log para un mejor registro de errores en producción
-        error_log('PHPMailer Error: ' . $mail->ErrorInfo);
-        $this->sendError(500, 'No se pudo enviar el correo. Por favor, contacte al administrador.');
+        error_log('PHPMailer Error en Test: ' . $mail->ErrorInfo);
+        $this->sendError(500, 'No se pudo enviar el correo de prueba: ' . $mail->ErrorInfo);
     }
 }
 
