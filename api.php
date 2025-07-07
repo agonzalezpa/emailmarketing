@@ -1167,11 +1167,20 @@ class EmailMarketingAPI
             // $mail->Debugoutput = function($str, $level) { error_log("SMTP [$level]: $str"); };
             $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/24/1794" width="1" height="1" style="display:none;"/>';
             // Configuración del correo
+
+            $variables = [
+                '{{name}}'  => $data['name'],
+                '{{email}}' => $data['email'],
+            ];
+
+            $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
+            $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
+
             $mail->setFrom($sender['email'], $sender['name']);
             $mail->addAddress($data['test_email']);
             $mail->isHTML(true);
-            $mail->Subject = $data['subject'];
-            $mail->Body = $data['html_content'] . $trackingPixel;
+            $mail->Subject =$personalizedSubject;
+            $mail->Body = $personalizedHtml . $trackingPixel;
 
 
             $mail->send();

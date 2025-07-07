@@ -145,12 +145,20 @@ try {
             try {
 
                 $loopPdo = createPdoConnection();
+                // Reemplazo de variables personalizadas en asunto y cuerpo
+                $variables = [
+                    '{{name}}'  => $recipient['name'],
+                    '{{email}}' => $recipient['email'],
+                ];
 
-                $attachmentPath = __DIR__ . '/catalogo.pdf';
+                $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
+                $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $recipient['html_content']);
+
+                $attachmentPath = __DIR__ . '/precios_base.pdf';
                 $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
-                $finalHtmlContent =  $recipient['html_content'] . $trackingPixel;
-
-                $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $recipient['subject'], $finalHtmlContent, file_exists($attachmentPath) ? $attachmentPath : null);
+                //$finalHtmlContent =  $recipient['html_content'] . $trackingPixel;
+                $finalHtmlContent = $personalizedHtml . $trackingPixel;
+                $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $personalizedSubject, $finalHtmlContent, file_exists($attachmentPath) ? $attachmentPath : null);
 
                 if ($emailSent['success']) {
                     $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'sent', sent_at = CURRENT_TIMESTAMP, error_message = NULL WHERE id = ?");
