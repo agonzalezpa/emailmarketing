@@ -62,8 +62,7 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachme
 {
     try {
         $mail = new PHPMailer(true);
-
-        // Configuración del servidor SMTP (¡Correcto!)
+        // ... (toda tu configuración SMTP existente va aquí)
         $mail->isSMTP();
         $mail->Host = $sender['smtp_host'];
         $mail->SMTPAuth = true;
@@ -72,35 +71,39 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachme
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = 465;
 
-        // Configuración de encabezados y contenido (¡Excelente!)
+        // --- INICIO DE AJUSTES ---
+
+        // 1. Incrusta las imágenes y dales un CID único
+        //    Asegúrate de que la ruta a tus imágenes sea correcta en el servidor
+        $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+        $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+        //$mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
+
+        // 2. El resto de la configuración
+        $mail->CharSet = 'UTF-8';
         $mail->setFrom($sender['email'], $sender['name']);
         $mail->addAddress($toEmail, $toName);
         $mail->addReplyTo($sender['email'], $sender['name']);
         $mail->isHTML(true);
-        $mail->CharSet = 'UTF-8'; // Clave para tildes y emojis
-
-        // --- AJUSTE ---
-        // Asigna el asunto directamente. PHPMailer lo codificará por ti.
-        $mail->Subject = $subject;
-
-        // Cuerpo del correo (¡Excelente práctica incluir AltBody!)
+        $mail->Subject = $subject; // PHPMailer lo maneja
+        
+        // 3. El $htmlContent ya debe tener los CIDs en lugar de las URLs
         $mail->Body = $htmlContent;
         $mail->AltBody = strip_tags($htmlContent);
 
-        // Manejo de adjuntos (¡Muy seguro y bien hecho!)
         if ($attachmentPath && file_exists($attachmentPath)) {
             $mail->addAttachment($attachmentPath, basename($attachmentPath));
         }
 
+        // --- FIN DE AJUSTES ---
+
         $mail->send();
         return ['success' => true];
     } catch (Exception $e) {
-        // Para producción, es buena idea registrar el error además de retornarlo.
         error_log("Error al enviar correo: " . $e->getMessage());
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
-
 
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {

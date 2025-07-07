@@ -1186,7 +1186,7 @@ class EmailMarketingAPI
         //    Esto asegura que la ruta siempre sea correcta sin importar desde dónde se ejecute el script.
         $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
         $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
-        $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
+       // $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
 
         // --- CONTENIDO DEL CORREO ---
         // El tracking pixel se puede mantener, no interfiere.
