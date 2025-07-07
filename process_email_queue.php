@@ -193,7 +193,7 @@ try {
                 $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
                 $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $recipient['html_content']);
 
-                $attachmentPath = __DIR__ . '/precios_base.pdf';
+                $attachmentPath = __DIR__ . '/uploads/precios_base.pdf';
                 $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
                 //$finalHtmlContent =  $recipient['html_content'] . $trackingPixel;
                 $finalHtmlContent = $personalizedHtml . $trackingPixel;
