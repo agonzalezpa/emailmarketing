@@ -395,7 +395,7 @@ class EmailMarketingApp {
             name: document.getElementById('campaign-name').value,
             sender_id: document.getElementById('campaign-sender').value,
             subject: document.getElementById('campaign-subject').value,
-            html_content: document.getElementById('email-editor').innerHTML,
+            html_content: tinymce.get('email-editor').getContent(),
         };
         if (selectedLists.length > 0) {
             campaign.list_ids = selectedLists;
@@ -642,7 +642,7 @@ class EmailMarketingApp {
         document.getElementById('send-campaign').style.display = 'none';
 
         // Reset editor
-        document.getElementById('email-editor').innerHTML = '<p>Escribe tu mensaje aquí...</p>';
+        tinymce.get('email-editor').setContent('<p>Escribe tu mensaje aquí...</p>');
     }
 
     nextStep() {
@@ -679,7 +679,7 @@ class EmailMarketingApp {
                 return false;
             }
         } else if (step === 2) {
-            const content = document.getElementById('email-editor').innerHTML.trim();
+            const content = tinymce.get('email-editor').getContent();
             if (!content || content === '<p>Escribe tu mensaje aquí...</p>') {
                 this.showToast('error', 'Contenido requerido', 'Por favor escribe el contenido del email.');
                 return false;
@@ -750,7 +750,7 @@ class EmailMarketingApp {
 
         // Update preview with proper HTML rendering
         const previewContainer = document.getElementById('email-preview-content');
-        const emailContent = document.getElementById('email-editor').innerHTML;
+        const emailContent = tinymce.get('email-editor').getContent();
 
         // Clear previous content
         previewContainer.innerHTML = '';
@@ -814,7 +814,7 @@ class EmailMarketingApp {
     }
 
     previewEmail() {
-        const content = document.getElementById('email-editor').value;
+        const content = tinymce.get('email-editor').getContent();
         const subject = document.getElementById('campaign-subject').value || 'Vista Previa del Email';
 
         const previewWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
