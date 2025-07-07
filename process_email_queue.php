@@ -47,11 +47,23 @@ function limpiarAsunto($asunto)
         $longitud
     );
 }
-// Función de envío de correo (sin cambios)
+/**
+ * Envía un correo electrónico usando PHPMailer con configuración SMTP.
+ *
+ * @param array $sender Un array con los datos del remitente (smtp_host, smtp_username, etc.).
+ * @param string $toEmail La dirección de correo del destinatario.
+ * @param string $toName El nombre del destinatario.
+ * @param string $subject El asunto del correo.
+ * @param string $htmlContent El cuerpo del correo en formato HTML.
+ * @param string|null $attachmentPath La ruta opcional a un archivo adjunto.
+ * @return array Un array indicando el éxito o fracaso de la operación.
+ */
 function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachmentPath = null)
 {
     try {
         $mail = new PHPMailer(true);
+
+        // Configuración del servidor SMTP (¡Correcto!)
         $mail->isSMTP();
         $mail->Host = $sender['smtp_host'];
         $mail->SMTPAuth = true;
@@ -59,20 +71,32 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachme
         $mail->Password = $sender['smtp_password'];
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = 465;
+
+        // Configuración de encabezados y contenido (¡Excelente!)
         $mail->setFrom($sender['email'], $sender['name']);
         $mail->addAddress($toEmail, $toName);
         $mail->addReplyTo($sender['email'], $sender['name']);
         $mail->isHTML(true);
-        $mail->CharSet = 'UTF-8';
-        $mail->Subject =  limpiarAsunto($subject);
+        $mail->CharSet = 'UTF-8'; // Clave para tildes y emojis
+
+        // --- AJUSTE ---
+        // Asigna el asunto directamente. PHPMailer lo codificará por ti.
+        $mail->Subject = $subject;
+
+        // Cuerpo del correo (¡Excelente práctica incluir AltBody!)
         $mail->Body = $htmlContent;
         $mail->AltBody = strip_tags($htmlContent);
+
+        // Manejo de adjuntos (¡Muy seguro y bien hecho!)
         if ($attachmentPath && file_exists($attachmentPath)) {
             $mail->addAttachment($attachmentPath, basename($attachmentPath));
         }
+
         $mail->send();
         return ['success' => true];
     } catch (Exception $e) {
+        // Para producción, es buena idea registrar el error además de retornarlo.
+        error_log("Error al enviar correo: " . $e->getMessage());
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
