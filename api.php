@@ -1130,7 +1130,22 @@ class EmailMarketingAPI
     }
 
 
-
+function limpiarAsunto($asunto)
+{
+    $cadena = "Subject";
+    $longitud = strlen($cadena) + 2;
+    return substr(
+        iconv_mime_encode(
+            $cadena,
+            $asunto,
+            [
+                "input-charset" => "UTF-8",
+                "output-charset" => "UTF-8",
+            ]
+        ),
+        $longitud
+    );
+}
     private function handleSendTest()
     {
         $data = $this->getJsonInput();
@@ -1179,7 +1194,7 @@ class EmailMarketingAPI
             $mail->setFrom($sender['email'], $sender['name']);
             $mail->addAddress($data['test_email']);
             $mail->isHTML(true);
-            $mail->Subject =$personalizedSubject;
+            $mail->Subject =$this->limpiarAsunto($personalizedSubject);
             $mail->Body = $personalizedHtml . $trackingPixel;
 
 
