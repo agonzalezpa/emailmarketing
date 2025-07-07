@@ -1147,64 +1147,78 @@ function limpiarAsunto($asunto)
     );
 }
     private function handleSendTest()
-    {
-        $data = $this->getJsonInput();
+{
+    $data = $this->getJsonInput();
 
-        $required = ['sender_id', 'subject', 'html_content', 'test_email'];
-        $this->validateRequiredFields($data, $required);
+    $required = ['sender_id', 'subject', 'html_content', 'test_email'];
+    $this->validateRequiredFields($data, $required);
 
-        $pdo = $this->getConnection();
+    $pdo = $this->getConnection();
 
-        // Obtener datos del remitente
-        $stmt = $pdo->prepare("SELECT * FROM senders WHERE id = ? AND is_active = 1");
-        $stmt->execute([$data['sender_id']]);
-        $sender = $stmt->fetch();
+    // Obtener datos del remitente
+    $stmt = $pdo->prepare("SELECT * FROM senders WHERE id = ? AND is_active = 1");
+    $stmt->execute([$data['sender_id']]);
+    $sender = $stmt->fetch();
 
-        if (!$sender) {
-            $this->sendError(400, 'Remitente inválido o inactivo.');
-        }
-
-        // Crear instancia PHPMailer
-        $mail = new PHPMailer(true);
-
-        try {
-            // Configurar SMTP según Hostinger
-            $mail->isSMTP();
-            $mail->Host = $sender['smtp_host']; // 'smtp.hostinger.com';
-            $mail->SMTPAuth = true;
-            $mail->Username = $sender['smtp_username'];  // debe estar en la tabla senders
-            $mail->Password = $sender['smtp_password'];
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port = 465;
-
-            // Opcional: activar debug si estás probando
-            // $mail->SMTPDebug = 2;
-            // $mail->Debugoutput = function($str, $level) { error_log("SMTP [$level]: $str"); };
-            $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/24/1794" width="1" height="1" style="display:none;"/>';
-            // Configuración del correo
-
-            $variables = [
-                '{{name}}'  => $data['name'],
-                '{{email}}' => $data['email'],
-            ];
-
-            $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
-            $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
-
-            $mail->setFrom($sender['email'], $sender['name']);
-            $mail->addAddress($data['test_email']);
-            $mail->isHTML(true);
-            $mail->Subject =$this->limpiarAsunto($personalizedSubject);
-            $mail->Body = $personalizedHtml . $trackingPixel;
-
-
-            $mail->send();
-
-            $this->sendResponse(['success' => true, 'message' => 'Correo de prueba enviado correctamente']);
-        } catch (Exception $e) {
-            $this->sendError(500, 'No se pudo enviar el correo: ' . $mail->ErrorInfo);
-        }
+    if (!$sender) {
+        $this->sendError(400, 'Remitente inválido o inactivo.');
     }
+
+    // Crear instancia PHPMailer
+    $mail = new PHPMailer(true);
+
+    try {
+        // --- CONFIGURACIÓN ESENCIAL ---
+        // 1. Establecer el CharSet a UTF-8 (¡Este es el ajuste clave!)
+        $mail->CharSet = 'UTF-8';
+        
+        // 2. PHPMailer generará Content-Type y otros encabezados automáticamente
+        $mail->isHTML(true);
+
+        // --- CONFIGURACIÓN SMTP ---
+        $mail->isSMTP();
+        $mail->Host = $sender['smtp_host'];
+        $mail->SMTPAuth = true;
+        $mail->Username = $sender['smtp_username'];
+        $mail->Password = $sender['smtp_password'];
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $mail->Port = 465;
+
+        // --- CONTENIDO DEL CORREO ---
+        $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/24/1794" width="1" height="1" style="display:none;"/>';
+
+        // Variables para personalización (asumiendo que vienen en $data)
+        $variables = [
+            '{{name}}'  => isset($data['name']) ? $data['name'] : 'Usuario', // Valor por defecto
+            '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'], // Valor por defecto
+        ];
+
+        $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
+        $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
+
+        // --- ARMADO DEL CORREO ---
+        $mail->setFrom($sender['email'], $sender['name']);
+        $mail->addAddress($data['test_email']);
+        
+        // 3. Asigna el asunto directamente. PHPMailer lo codifica por ti.
+        $mail->Subject = $personalizedSubject;
+        
+        // El cuerpo ya está listo
+        $mail->Body = $personalizedHtml . $trackingPixel;
+
+        // Opcional: Cuerpo de texto plano para clientes que no soportan HTML
+        // $mail->AltBody = 'Este es el cuerpo en texto plano para clientes de correo no-HTML';
+
+        // --- ENVÍO ---
+        $mail->send();
+
+        $this->sendResponse(['success' => true, 'message' => 'Correo de prueba enviado correctamente']);
+    } catch (Exception $e) {
+        // Usar error_log para un mejor registro de errores en producción
+        error_log('PHPMailer Error: ' . $mail->ErrorInfo);
+        $this->sendError(500, 'No se pudo enviar el correo. Por favor, contacte al administrador.');
+    }
+}
 
 
     //Crea y pone la campaña en estado enviandose para que el CRON envie poco a poco los 

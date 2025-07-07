@@ -31,7 +31,22 @@ function createPdoConnection()
         ]
     );
 }
-
+function limpiarAsunto($asunto)
+{
+    $cadena = "Subject";
+    $longitud = strlen($cadena) + 2;
+    return substr(
+        iconv_mime_encode(
+            $cadena,
+            $asunto,
+            [
+                "input-charset" => "UTF-8",
+                "output-charset" => "UTF-8",
+            ]
+        ),
+        $longitud
+    );
+}
 // Función de envío de correo (sin cambios)
 function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachmentPath = null)
 {
@@ -49,7 +64,7 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachme
         $mail->addReplyTo($sender['email'], $sender['name']);
         $mail->isHTML(true);
         $mail->CharSet = 'UTF-8';
-        $mail->Subject = $subject;
+        $mail->Subject =  limpiarAsunto($subject);
         $mail->Body = $htmlContent;
         $mail->AltBody = strip_tags($htmlContent);
         if ($attachmentPath && file_exists($attachmentPath)) {
