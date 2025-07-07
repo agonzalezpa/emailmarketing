@@ -125,7 +125,7 @@ try {
 
     $secondsInDay = 86400;
     $secondsElapsed = time() - strtotime('today midnight');
-    $dailyLimit = 200; // Por campaña
+    $dailyLimit = 500; // Por campaña
 
     foreach ($campaigns as $camp) {
         $pdo = createPdoConnection();
