@@ -1,7 +1,7 @@
 <?php
 
 // --- CONFIGURACIÓN INICIAL ---
-date_default_timezone_set('America/Havana');
+//date_default_timezone_set('America/Havana');
 define('YOUR_DOMAIN', 'marketing.dom0125.com');
 
 // --- CARGA DE DEPENDENCIAS ---
@@ -128,7 +128,7 @@ try {
 
     $secondsInDay = 86400;
     $secondsElapsed = time() - strtotime('today midnight');
-    $dailyLimit = 500; // Por campaña
+    $dailyLimit = 1000; // Por campaña
 
     foreach ($campaigns as $camp) {
         $pdo = createPdoConnection();
