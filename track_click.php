@@ -30,7 +30,7 @@ $url = $_GET['url'];
 
 // Registrar el clic
 $pdo = createPdoConnection();
-$stmt = $pdo->prepare("INSERT INTO email_events (campaign_id, contact_id, event_type, event_time) VALUES (?, ?, 'click', NOW())");
+$stmt = $pdo->prepare("INSERT INTO email_events (campaign_id, contact_id, event_type, event_time) VALUES (?, ?, 'clicked', NOW())");
 $stmt->execute([$campaignId, $contactId]);
 
 // Redirigir al destino real

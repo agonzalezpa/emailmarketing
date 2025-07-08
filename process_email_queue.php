@@ -191,6 +191,8 @@ try {
                 $variables = [
                     '{{name}}'  => $recipient['name'],
                     '{{email}}' => $recipient['email'],
+                    '{{campaign_id}}' => $campaignId,
+                    '{{contact_id}}' => $recipient['id'],
                 ];
 
                 $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
