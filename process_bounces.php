@@ -3,39 +3,46 @@
 /**
  * process_bounces.php
  *
- * Este script se conecta a múltiples buzones de correo (definidos en la tabla `senders`)
- * para procesar correos rebotados (bounces).
+ * Este script se conecta a múltiples buzones de correo para procesar rebotes (bounces).
+ * Es "MIME-aware" y registra cada paso en un archivo de log para depuración.
  *
  * Lógica:
- * 1. Conecta a la base de datos principal.
- * 2. Obtiene todos los remitentes activos que tienen configuración IMAP.
- * 3. Itera sobre cada remitente.
- * 4. Se conecta al buzón IMAP de cada remitente.
- * 5. Busca correos recibidos desde el inicio del día actual (SINCE "dd-M-yyyy").
- * 6. Extrae el ID del destinatario de la campaña desde la cabecera 'X-Campaign-Recipient-ID'.
- * 7. Si lo encuentra, actualiza el registro correspondiente en `campaign_recipients` a 'bounced'.
- * 8. Mueve el correo procesado a una carpeta de 'Bounces' para no volver a procesarlo.
- *
- * Este script está diseñado para ser ejecutado como un cron job.
+ * 1. Obtiene los remitentes activos desde la base de datos.
+ * 2. Para cada remitente, se conecta a su buzón IMAP.
+ * 3. Busca correos recibidos desde el inicio del día actual.
+ * 4. Analiza la estructura MIME de cada correo para encontrar el ID y la razón del rebote.
+ * 5. Si encuentra un ID válido, actualiza el registro correspondiente en `campaign_recipients`.
+ * 6. Mueve el correo procesado a una carpeta 'Bounces'.
+ * 7. Registra todas las acciones y errores en 'process_bounces.log'.
  */
 
-// --- CONFIGURACIÓN DE LA BASE DE DATOS ---
+// --- CONFIGURACIÓN ---
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'u750684196_email_marketin');
 define('DB_USER', 'u750684196_info');
 define('DB_PASS', 'Olivera19%');
+define('LOG_FILE', __DIR__ . '/process_bounces.log');
+
+// --- FUNCIÓN DE LOGGING ---
+function log_message($message)
+{
+    // Añade la fecha y hora a cada mensaje y lo guarda en el archivo de log.
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents(LOG_FILE, "[$timestamp] " . $message . "\n", FILE_APPEND);
+}
 
 // --- INICIO DEL SCRIPT ---
-echo "============================================\n";
-echo "Iniciando proceso de rebotes: " . date('Y-m-d H:i:s') . "\n";
-echo "============================================\n";
+log_message("============================================");
+log_message("Iniciando proceso de rebotes...");
 
 // Conexión a la base de datos
 try {
     $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    log_message("Conexión a la base de datos exitosa.");
 } catch (PDOException $e) {
-    die("Error CRÍTICO de conexión a la base de datos: " . $e->getMessage() . "\n");
+    log_message("Error CRÍTICO de conexión a la base de datos: " . $e->getMessage());
+    die(); // Detener el script si no se puede conectar a la BD
 }
 
 // 1. Obtener todos los remitentes activos con configuración IMAP
@@ -43,109 +50,129 @@ try {
     $stmt = $pdo->query("SELECT * FROM senders WHERE is_active = 1 AND imap_host IS NOT NULL AND imap_host != ''");
     $senders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die("Error al obtener los remitentes: " . $e->getMessage() . "\n");
+    log_message("Error al obtener los remitentes: " . $e->getMessage());
+    die();
 }
 
 if (empty($senders)) {
-    echo "No hay remitentes activos con configuración IMAP para procesar. Finalizando.\n";
-    file_put_contents(__DIR__ . '/process_bounces.log', "No hay remitentes activos con configuración IMAP para procesar. Finalizando.\n", FILE_APPEND);
+    log_message("No hay remitentes activos con configuración IMAP para procesar. Finalizando.");
     exit;
 }
 
-echo "Se encontraron " . count($senders) . " remitentes para procesar.\n";
+log_message("Se encontraron " . count($senders) . " remitentes para procesar.");
 
-// 2. Iterar sobre cada remitente para procesar su buzón
+// 2. Iterar sobre cada remitente
 foreach ($senders as $sender) {
-    echo "\n--- Procesando remitente: {$sender['email']} ---\n";
-    file_put_contents(__DIR__ . '/process_bounces.log', "Procesando remitente: {$sender['email']}\n", FILE_APPEND);
-    // Construir la cadena de conexión IMAP
-    $imap_port = $sender['imap_port'] ?? 993; // Puerto 993 por defecto para IMAP SSL
-    $imap_path = "{{$sender['imap_host']}:{$imap_port}/imap/ssl}";
+    log_message("--- Procesando remitente: {$sender['email']} ---");
+
+    $imap_port = $sender['imap_port'] ?? 993;
+    $imap_path = "{{$sender['imap_host']}:{$imap_port}/imap/ssl/novalidate-cert}";
     $processed_mailbox_folder = 'Bounces';
 
-    // Conexión al buzón de correo del remitente actual
-    $inbox = @imap_open($imap_path . 'INBOX', $sender['smtp_username'], $sender['smtp_password']);
+    $inbox = @imap_open($imap_path . 'INBOX', $sender['smtp_username'], $sender['smtp_password'], 0, 1);
 
     if (!$inbox) {
-        echo "ERROR: No se pudo conectar al buzón de {$sender['email']}. Razón: " . imap_last_error() . "\n";
-        file_put_contents(__DIR__ . '/process_bounces.log', "ERROR: No se pudo conectar al buzón de {$sender['email']}. Razón: " . imap_last_error() . "\n", FILE_APPEND);
+        log_message("ERROR: No se pudo conectar al buzón de {$sender['email']}. Razón: " . imap_last_error());
         continue; // Saltar al siguiente remitente
     }
 
-    // Crear la carpeta para los correos procesados si no existe
+    log_message("Conexión IMAP exitosa para {$sender['email']}.");
+
     if (!mailbox_exists($inbox, $imap_path, $processed_mailbox_folder)) {
         if (@imap_createmailbox($inbox, imap_utf7_encode($imap_path . $processed_mailbox_folder))) {
-            echo "Carpeta '$processed_mailbox_folder' creada exitosamente.\n";
+            log_message("Carpeta '$processed_mailbox_folder' creada exitosamente.");
         } else {
-            echo "ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'.\n";
-            file_put_contents(__DIR__ . '/process_bounces.log', "ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'.\n", FILE_APPEND);
+            log_message("ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'. Puede que ya exista o sea un problema de permisos.");
         }
     }
 
-    // --- MODIFICACIÓN CLAVE: Buscar por fecha en lugar de "UNSEEN" ---
     $search_date = date("d-M-Y");
     $search_criteria = "SINCE \"$search_date\"";
-    echo "Buscando correos en INBOX desde el $search_date...\n";
+    log_message("Buscando correos en INBOX desde el $search_date...");
 
     $emails = imap_search($inbox, $search_criteria, SE_UID);
 
     if ($emails) {
-        echo "Se encontraron " . count($emails) . " correos para revisar.\n";
+        log_message("Se encontraron " . count($emails) . " correos para revisar.");
 
         $updateStmt = $pdo->prepare(
-            "UPDATE campaign_recipients 
-             SET status = 'bounced', bounced_at = NOW(), bounce_reason = ? 
-             WHERE id = ?"
+            "UPDATE campaign_recipients SET status = 'bounced', bounced_at = NOW(), bounce_reason = ? WHERE id = ?"
         );
 
         foreach ($emails as $uid) {
-            // Usamos el UID para obtener el número de secuencia del mensaje
-            $msg_number = imap_msgno($inbox, $uid);
+            $structure = imap_fetchstructure($inbox, $uid, FT_UID);
+            $recipient_id = null;
+            $bounce_reason = 'Razón no especificada.';
 
-            $header_text = imap_fetchheader($inbox, $uid, FT_UID);
-
-            // Intentar extraer el ID personalizado de la cabecera
-            $recipient_id = extract_custom_header($header_text, 'X-Campaign-Recipient-ID');
-
-            if ($recipient_id) {
-                $body = imap_body($inbox, $uid, FT_UID);
-                $bounce_reason = extract_bounce_reason($body);
-                echo " - Rebote detectado para el destinatario ID: $recipient_id\n";
-
-                $updateStmt->execute([$bounce_reason, $recipient_id]);
-
-                if ($updateStmt->rowCount() > 0) {
-                    echo "   -> Registro actualizado a 'bounced'.\n";
-                } else {
-                    echo "   -> ADVERTENCIA: El registro con ID $recipient_id no se encontró o ya estaba actualizado.\n";
-                    file_put_contents(__DIR__ . '/process_bounces.log', "ADVERTENCIA: El registro con ID $recipient_id no se encontró o ya estaba actualizado.\n", FILE_APPEND);
-                }
-            } else {
-                echo " - Correo UID #$uid ignorado (no es un rebote de campaña o no tiene la cabecera).\n";
-                file_put_contents(__DIR__ . '/process_bounces.log', "Correo UID #$uid ignorado (no es un rebote de campaña o no tiene la cabecera).\n", FILE_APPEND);
+            if (isset($structure->parts) && is_array($structure->parts)) {
+                list($recipient_id, $bounce_reason) = parse_mime_parts($inbox, $uid, $structure->parts);
             }
 
-            // Mover el correo procesado para no volver a leerlo
+            if ($recipient_id) {
+                log_message(" - Rebote detectado para el destinatario ID: $recipient_id");
+
+                try {
+                    $updateStmt->execute([$bounce_reason, $recipient_id]);
+                    if ($updateStmt->rowCount() > 0) {
+                        log_message("   -> Registro actualizado a 'bounced'.");
+                    } else {
+                        log_message("   -> ADVERTENCIA: El registro con ID $recipient_id no se encontró o ya estaba actualizado.");
+                    }
+                } catch (PDOException $e) {
+                    log_message("   -> ERROR de BD al actualizar el registro ID $recipient_id: " . $e->getMessage());
+                }
+            } else {
+                log_message(" - Correo UID #$uid ignorado (no es un rebote de campaña válido).");
+            }
+
+            // Mover el correo procesado
             imap_mail_move($inbox, "$uid", $processed_mailbox_folder, CP_UID);
         }
 
         imap_expunge($inbox);
     } else {
-        echo "No se encontraron nuevos correos de rebote para este remitente desde $search_date.\n";
+        log_message("No se encontraron nuevos correos de rebote para este remitente desde $search_date.");
     }
 
-    // Cerrar la conexión para este remitente
     imap_close($inbox);
 }
 
-echo "\n============================================\n";
-echo "Proceso de rebotes finalizado: " . date('Y-m-d H:i:s') . "\n";
-echo "============================================\n";
-file_put_contents(__DIR__ . '/process_bounces.log', "Proceso de rebotes finalizado: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+log_message("Proceso de rebotes finalizado.");
+log_message("============================================");
+
 
 /**
- * Función para extraer el valor de una cabecera personalizada.
+ * Funciones de ayuda
  */
+function parse_mime_parts($inbox, $uid, $parts, $parent_part_number = '')
+{
+    $recipient_id = null;
+    $bounce_reason = 'Razón no especificada.';
+
+    foreach ($parts as $index => $part) {
+        $current_part_number = ($parent_part_number ? $parent_part_number . '.' : '') . ($index + 1);
+
+        if (isset($part->parts) && is_array($part->parts)) {
+            list($sub_id, $sub_reason) = parse_mime_parts($inbox, $uid, $part->parts, $current_part_number);
+            if ($sub_id) $recipient_id = $sub_id;
+            if ($sub_reason !== 'Razón no especificada.') $bounce_reason = $sub_reason;
+        }
+
+        if (isset($part->type) && $part->type == 2 && isset($part->subtype) && $part->subtype == 'DELIVERY-STATUS') {
+            $body = imap_fetchbody($inbox, $uid, $current_part_number, FT_UID);
+            $reason = extract_bounce_reason($body);
+            if ($reason) $bounce_reason = $reason;
+        }
+
+        if (isset($part->type) && $part->type == 1 && isset($part->subtype) && $part->subtype == 'RFC822') {
+            $body = imap_fetchbody($inbox, $uid, $current_part_number, FT_UID);
+            $id = extract_custom_header($body, 'X-Campaign-Recipient-ID');
+            if ($id) $recipient_id = $id;
+        }
+    }
+    return [$recipient_id, $bounce_reason];
+}
+
 function extract_custom_header($header_text, $header_name)
 {
     $pattern = "/^" . preg_quote($header_name, '/') . ":\s*(.*)$/im";
@@ -155,14 +182,11 @@ function extract_custom_header($header_text, $header_name)
     return null;
 }
 
-/**
- * Función para extraer la razón del rebote desde el cuerpo del mensaje.
- */
 function extract_bounce_reason($body)
 {
-    $pattern = '/Diagnostic-Code: (.*)/i';
+    $pattern = '/Diagnostic-Code: (.*?)(?:\r\n\r\n|\r\n[A-Z]|$)/is';
     if (preg_match($pattern, $body, $matches)) {
-        return trim($matches[1]);
+        return trim(preg_replace('/\s+/', ' ', $matches[1]));
     }
 
     $pattern = '/Status: (.*)/i';
@@ -173,12 +197,10 @@ function extract_bounce_reason($body)
     return 'Razón no especificada.';
 }
 
-/**
- * Verifica si un buzón (carpeta) existe.
- */
 function mailbox_exists($stream, $imap_path, $mailbox)
 {
     $mailboxes = imap_list($stream, $imap_path, '*');
+    if ($mailboxes === false) return false;
     $encoded_mailbox_name = imap_utf7_encode($imap_path . $mailbox);
     return in_array($encoded_mailbox_name, $mailboxes);
 }
