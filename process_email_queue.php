@@ -58,7 +58,7 @@ function limpiarAsunto($asunto)
  * @param string|null $attachmentPath La ruta opcional a un archivo adjunto.
  * @return array Un array indicando el éxito o fracaso de la operación.
  */
-function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachmentPath = null)
+function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $id_recipient, $attachmentPath = null)
 {
     try {
         $mail = new PHPMailer(true);
@@ -81,6 +81,7 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachme
 
         // 2. El resto de la configuración
         $mail->CharSet = 'UTF-8';
+        $mail->addCustomHeader('X-Campaign-Recipient-ID', $id_recipient);
         $mail->setFrom($sender['email'], $sender['name']);
         $mail->addAddress($toEmail, $toName);
         $mail->addReplyTo($sender['email'], $sender['name']);
@@ -219,7 +220,7 @@ try {
                 $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
                 //$finalHtmlContent =  $recipient['html_content'] . $trackingPixel;
                 $finalHtmlContent = $personalizedHtml . $trackingPixel;
-                $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $personalizedSubject, $finalHtmlContent, file_exists($attachmentPath) ? $attachmentPath : null);
+                $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $personalizedSubject, $finalHtmlContent,$recipient['id'], file_exists($attachmentPath) ? $attachmentPath : null);
 
                 if ($emailSent['success']) {
                     $updateStmt = $loopPdo->prepare("UPDATE campaign_recipients SET status = 'sent', sent_at = CURRENT_TIMESTAMP, error_message = NULL WHERE id = ?");
