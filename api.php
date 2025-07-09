@@ -1003,7 +1003,7 @@ class EmailMarketingAPI
              -- Contar cuántos contactos únicos hicieron clic para esta campaña
             (SELECT COUNT(DISTINCT ee.contact_id) 
              FROM email_events ee 
-             WHERE ee.campaign_id = c.id AND ee.event_type = 'click') AS total_clicked
+             WHERE ee.campaign_id = c.id AND ee.event_type = 'clicked') AS total_clicked
 
         FROM campaigns c 
         LEFT JOIN senders s ON c.sender_id = s.id 
