@@ -86,7 +86,7 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $attachme
         $mail->addReplyTo($sender['email'], $sender['name']);
         $mail->isHTML(true);
         $mail->Subject = $subject; // PHPMailer lo maneja
-        
+
         // 3. El $htmlContent ya debe tener los CIDs en lugar de las URLs
         $mail->Body = $htmlContent;
         $mail->AltBody = strip_tags($htmlContent);
@@ -182,18 +182,35 @@ try {
         // Cierra la conexión principal antes del envío masivo
         $pdo = null;
 
+
+        // --- URLs de destino para esta campaña/correo ---
+        $url_to_track = 'https://dom0125.com/schedule-meeting.html';
+        // --- Codificar las URLs en base64 ---
+        $encoded_url_to_track = base64_encode($url_to_track);
+
+        // --- Generar los enlaces de seguimiento completos ---
+        $base_tracking_url = 'https://marketing.dom0125.com/track_click.php';
+
+
         // --- BUCLE DE ENVÍO POR CAMPAÑA ---
         foreach ($recipients as $recipient) {
             try {
 
                 $loopPdo = createPdoConnection();
+
+                $params = '?campaign_id=' . $campaignId . '&contact_id=' . $recipient['contact_id'];
+                $tracking_link = $base_tracking_url . $params . '&redirect_url=' . urlencode($encoded_url_to_track);
+
                 // Reemplazo de variables personalizadas en asunto y cuerpo
                 $variables = [
                     '{{name}}'  => $recipient['name'],
                     '{{email}}' => $recipient['email'],
                     '{{campaign_id}}' => $campaignId,
                     '{{contact_id}}' =>  $recipient['contact_id'],
+                    '{{TRACK_LINK}}' => $tracking_link,
                 ];
+
+
 
                 $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
                 $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $recipient['html_content']);

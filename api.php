@@ -1146,77 +1146,77 @@ class EmailMarketingAPI
             $longitud
         );
     }
-   private function handleSendTest()
-{
-    $data = $this->getJsonInput();
+    private function handleSendTest()
+    {
+        $data = $this->getJsonInput();
 
-    $required = ['sender_id', 'subject', 'html_content', 'test_email'];
-    $this->validateRequiredFields($data, $required);
+        $required = ['sender_id', 'subject', 'html_content', 'test_email'];
+        $this->validateRequiredFields($data, $required);
 
-    $pdo = $this->getConnection();
+        $pdo = $this->getConnection();
 
-    // Obtener datos del remitente
-    $stmt = $pdo->prepare("SELECT * FROM senders WHERE id = ? AND is_active = 1");
-    $stmt->execute([$data['sender_id']]);
-    $sender = $stmt->fetch();
+        // Obtener datos del remitente
+        $stmt = $pdo->prepare("SELECT * FROM senders WHERE id = ? AND is_active = 1");
+        $stmt->execute([$data['sender_id']]);
+        $sender = $stmt->fetch();
 
-    if (!$sender) {
-        $this->sendError(400, 'Remitente inválido o inactivo.');
+        if (!$sender) {
+            $this->sendError(400, 'Remitente inválido o inactivo.');
+        }
+
+        $mail = new PHPMailer(true);
+
+        try {
+            // --- CONFIGURACIÓN SMTP (como ya la tenías) ---
+            $mail->isSMTP();
+            $mail->Host = $sender['smtp_host'];
+            $mail->SMTPAuth = true;
+            $mail->Username = $sender['smtp_username'];
+            $mail->Password = $sender['smtp_password'];
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port = 465;
+
+            // --- AJUSTES PARA PROBAR IMÁGENES EMBEBIDAS ---
+
+            // 1. Configuración base de PHPMailer
+            $mail->CharSet = 'UTF-8';
+            $mail->isHTML(true);
+
+            // 2. Incrusta las imágenes desde tu ruta local usando __DIR__
+            //    Esto asegura que la ruta siempre sea correcta sin importar desde dónde se ejecute el script.
+            $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+            $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+            // $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
+
+            // --- CONTENIDO DEL CORREO ---
+            // El tracking pixel se puede mantener, no interfiere.
+            $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/24/1794" width="1" height="1" style="display:none;"/>';
+
+            // Personalización de variables
+            $variables = [
+                '{{name}}'  => isset($data['name']) ? $data['name'] : 'Usuario de Prueba',
+                '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'],
+            ];
+
+            $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
+
+            // Importante: El html_content que recibes ya debe usar los CIDs
+            $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
+
+            // --- ARMADO Y ENVÍO DEL CORREO ---
+            $mail->setFrom($sender['email'], $sender['name']);
+            $mail->addAddress($data['test_email']);
+            $mail->Subject = $personalizedSubject;
+            $mail->Body = $personalizedHtml . $trackingPixel;
+
+            $mail->send();
+
+            $this->sendResponse(['success' => true, 'message' => 'Correo de prueba enviado correctamente con imágenes incrustadas.']);
+        } catch (Exception $e) {
+            error_log('PHPMailer Error en Test: ' . $mail->ErrorInfo);
+            $this->sendError(500, 'No se pudo enviar el correo de prueba: ' . $mail->ErrorInfo);
+        }
     }
-
-    $mail = new PHPMailer(true);
-
-    try {
-        // --- CONFIGURACIÓN SMTP (como ya la tenías) ---
-        $mail->isSMTP();
-        $mail->Host = $sender['smtp_host'];
-        $mail->SMTPAuth = true;
-        $mail->Username = $sender['smtp_username'];
-        $mail->Password = $sender['smtp_password'];
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port = 465;
-
-        // --- AJUSTES PARA PROBAR IMÁGENES EMBEBIDAS ---
-
-        // 1. Configuración base de PHPMailer
-        $mail->CharSet = 'UTF-8';
-        $mail->isHTML(true);
-
-        // 2. Incrusta las imágenes desde tu ruta local usando __DIR__
-        //    Esto asegura que la ruta siempre sea correcta sin importar desde dónde se ejecute el script.
-        $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
-        $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
-       // $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
-
-        // --- CONTENIDO DEL CORREO ---
-        // El tracking pixel se puede mantener, no interfiere.
-        $trackingPixel = '<img src="https://marketing.dom0125.com/track/open/24/1794" width="1" height="1" style="display:none;"/>';
-
-        // Personalización de variables
-        $variables = [
-            '{{name}}'  => isset($data['name']) ? $data['name'] : 'Usuario de Prueba',
-            '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'],
-        ];
-
-        $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
-        
-        // Importante: El html_content que recibes ya debe usar los CIDs
-        $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
-
-        // --- ARMADO Y ENVÍO DEL CORREO ---
-        $mail->setFrom($sender['email'], $sender['name']);
-        $mail->addAddress($data['test_email']);
-        $mail->Subject = $personalizedSubject;
-        $mail->Body = $personalizedHtml . $trackingPixel;
-
-        $mail->send();
-
-        $this->sendResponse(['success' => true, 'message' => 'Correo de prueba enviado correctamente con imágenes incrustadas.']);
-    } catch (Exception $e) {
-        error_log('PHPMailer Error en Test: ' . $mail->ErrorInfo);
-        $this->sendError(500, 'No se pudo enviar el correo de prueba: ' . $mail->ErrorInfo);
-    }
-}
 
 
     //Crea y pone la campaña en estado enviandose para que el CRON envie poco a poco los 
@@ -1351,49 +1351,6 @@ class EmailMarketingAPI
 
         $this->sendResponse($stats);
     }
-
-    // no tiene puesto lo del adjunto
-    private function sendEmailOLD($sender, $toEmail, $toName, $subject, $htmlContent)
-    {
-        try {
-            $mail = new PHPMailer(true);
-
-
-            $mail->isSMTP();
-            $mail->Host = $sender['smtp_host']; // 'smtp.hostinger.com';
-            $mail->SMTPAuth = true;
-            $mail->Username = $sender['smtp_username'];  // debe estar en la tabla senders
-            $mail->Password = $sender['smtp_password'];
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port = 465;
-
-            // Recipients
-            $mail->setFrom($sender['email'], $sender['name']);
-            $mail->addAddress($toEmail, $toName);
-            $mail->addReplyTo($sender['email'], $sender['name']);
-
-            // Content
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body = $htmlContent;
-            $mail->addAttachment('catalogo.pdf', 'catalogo.pdf');
-
-            $mail->AltBody = strip_tags($htmlContent);
-
-            // Add tracking pixels and unsubscribe links
-            $trackingPixel = '<img src="' . $_SERVER['HTTP_HOST'] . '/track/open/' . base64_encode($toEmail) . '" width="1" height="1" style="display:none;">';
-            $mail->Body .= $trackingPixel;
-
-
-
-            $mail->send();
-            return ['success' => true];
-        } catch (Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
-    }
-
-
 
     private function testSmtpConnection($config)
     {

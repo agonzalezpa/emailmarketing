@@ -12,10 +12,10 @@ if (!empty($_GET['campaign_id']) && !empty($_GET['contact_id'])) {
     $contact_id = (int)$_GET['contact_id'];
 
     if ($campaign_id > 0 && $contact_id > 0) {
-        
+
         try {
             $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
-            
+
             // Capturamos la información adicional
             $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
@@ -26,16 +26,15 @@ if (!empty($_GET['campaign_id']) && !empty($_GET['contact_id'])) {
                  VALUES (?, ?, 'opened', ?, ? )"
             );
             $stmt->execute([$campaign_id, $contact_id, $ip_address, $user_agent]);
-
         } catch (PDOException $e) {
             // Silencio
             $errorMessage = "ERROR FATAL: " . $e->getMessage() . " en el archivo " . $e->getFile() . " en la línea " . $e->getLine();
-    file_put_contents(__DIR__ . '/error_log', $errorMessage . "\n", FILE_APPEND);
+            file_put_contents(__DIR__ . '/error_log', $errorMessage . "\n", FILE_APPEND);
         }
     }
-}else{
-    
-    file_put_contents(__DIR__ . '/error_log', "No vino con el id de campanna ni el id de contacto.$_GET\n", FILE_APPEND);
+} else {
+    $queryString = $_SERVER['QUERY_STRING'] ?? 'No query string';
+    file_put_contents(__DIR__ . '/error_log', "Petición sin parámetros recibida: " . $queryString . "\n", FILE_APPEND);
 }
 
 // Servir la imagen no cambia
