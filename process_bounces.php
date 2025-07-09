@@ -25,6 +25,7 @@ define('LOG_FILE', __DIR__ . '/process_bounces.log');
 
 // --- FUNCIÓN DE LOGGING ---
 function log_message($message) {
+    // Añade la fecha y hora a cada mensaje y lo guarda en el archivo de log.
     $timestamp = date('Y-m-d H:i:s');
     file_put_contents(LOG_FILE, "[$timestamp] " . $message . "\n", FILE_APPEND);
 }
@@ -33,21 +34,24 @@ function log_message($message) {
 log_message("============================================");
 log_message("Iniciando proceso de rebotes...");
 
+// Inicializar contadores para el resumen final
 $total_senders_processed = 0;
 $total_emails_checked = 0;
 $total_bounces_detected = 0;
 $total_db_updates = 0;
 $total_emails_moved = 0;
 
+// Conexión a la base de datos
 try {
     $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     log_message("Conexión a la base de datos exitosa.");
 } catch (PDOException $e) {
     log_message("Error CRÍTICO de conexión a la base de datos: " . $e->getMessage());
-    die();
+    die(); // Detener el script si no se puede conectar a la BD
 }
 
+// 1. Obtener todos los remitentes activos con configuración IMAP
 try {
     $stmt = $pdo->query("SELECT * FROM senders WHERE is_active = 1 AND imap_host IS NOT NULL AND imap_host != ''");
     $senders = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -63,6 +67,7 @@ if (empty($senders)) {
 
 log_message("Se encontraron " . count($senders) . " remitentes para procesar.");
 
+// 2. Iterar sobre cada remitente
 foreach ($senders as $sender) {
     $total_senders_processed++;
     log_message("--- Procesando remitente: {$sender['email']} ---");
@@ -163,6 +168,7 @@ log_message("Correos movidos a la carpeta 'Bounces': " . $total_emails_moved);
 log_message("Proceso de rebotes finalizado.");
 log_message("============================================");
 
+
 /**
  * Funciones de ayuda
  */
@@ -214,6 +220,7 @@ function extract_custom_header($header_text, $header_name) {
 }
 
 function extract_bounce_reason($body) {
+    // Patrón mejorado para capturar mensajes multilínea
     $pattern = '/Diagnostic-Code: (.*?)(?:\r\n\r\n|\r\n[A-Z]|$)/is';
     if (preg_match($pattern, $body, $matches)) {
         return trim(preg_replace('/\s+/', ' ', $matches[1]));
