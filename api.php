@@ -1324,7 +1324,7 @@ private function handleStats()
     $stats['total_campaigns'] = (int) $stmt->fetchColumn();
 
     // 2. Total de contactos activos (sin cambios)
-    $stmt = $pdo->query("SELECT COUNT(*) FROM contacts WHERE is_unsubscribed = 0");
+    $stmt = $pdo->query("SELECT COUNT(*) FROM contacts WHERE status = 'active'");
     $stats['total_contacts'] = (int) $stmt->fetchColumn();
 
     // --- LÓGICA DE CÁLCULO DE TASAS CORREGIDA ---
@@ -1338,7 +1338,7 @@ private function handleStats()
     $total_opened = (int) $stmt->fetchColumn();
 
     // 5. Contar el número total de eventos de clic
-    $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'click'");
+    $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'clicked'");
     $total_clicked = (int) $stmt->fetchColumn();
 
     // 6. Calcular los promedios generales y redondear
