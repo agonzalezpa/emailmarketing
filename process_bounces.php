@@ -1,5 +1,4 @@
 <?php
-
 /**
  * process_bounces.php
  *
@@ -25,8 +24,7 @@ define('DB_PASS', 'Olivera19%');
 define('LOG_FILE', __DIR__ . '/process_bounces.log');
 
 // --- FUNCIÓN DE LOGGING ---
-function log_message($message)
-{
+function log_message($message) {
     // Añade la fecha y hora a cada mensaje y lo guarda en el archivo de log.
     $timestamp = date('Y-m-d H:i:s');
     file_put_contents(LOG_FILE, "[$timestamp] " . $message . "\n", FILE_APPEND);
@@ -91,20 +89,20 @@ foreach ($senders as $sender) {
         if (@imap_createmailbox($inbox, imap_utf7_encode($imap_path . $processed_mailbox_folder))) {
             log_message("Carpeta '$processed_mailbox_folder' creada exitosamente.");
         } else {
-            log_message("ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'.");
+            log_message("ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'. Puede que ya exista o sea un problema de permisos.");
         }
     }
 
     $search_date = date("d-M-Y");
     $search_criteria = "SINCE \"$search_date\"";
     log_message("Buscando correos en INBOX desde el $search_date...");
-
+    
     $emails = imap_search($inbox, $search_criteria, SE_UID);
 
     if ($emails) {
         $total_emails_checked += count($emails);
         log_message("Se encontraron " . count($emails) . " correos para revisar.");
-
+        
         $updateStmt = $pdo->prepare(
             "UPDATE campaign_recipients SET status = 'bounced', bounced_at = NOW(), bounce_reason = ? WHERE id = ?"
         );
@@ -124,14 +122,14 @@ foreach ($senders as $sender) {
                 $body = imap_body($inbox, $uid, FT_UID);
                 $recipient_id = extract_custom_header($header_text, 'X-Campaign-Recipient-ID');
                 if ($recipient_id) {
-                    $bounce_reason = extract_bounce_reason($body);
+                     $bounce_reason = extract_bounce_reason($body);
                 }
             }
 
             if ($recipient_id) {
                 $total_bounces_detected++;
                 log_message(" - Rebote detectado para el destinatario ID: $recipient_id");
-
+                
                 try {
                     $updateStmt->execute([$bounce_reason, $recipient_id]);
                     if ($updateStmt->rowCount() > 0) {
@@ -151,7 +149,7 @@ foreach ($senders as $sender) {
                 $total_emails_moved++;
             }
         }
-
+        
         imap_expunge($inbox);
     } else {
         log_message("No se encontraron nuevos correos de rebote para este remitente desde $search_date.");
@@ -174,14 +172,13 @@ log_message("============================================");
 /**
  * Funciones de ayuda
  */
-function parse_mime_parts($inbox, $uid, $parts, $parent_part_number = '')
-{
+function parse_mime_parts($inbox, $uid, $parts, $parent_part_number = '') {
     $recipient_id = null;
     $bounce_reason = 'Razón no especificada.';
 
     foreach ($parts as $index => $part) {
         $current_part_number = ($parent_part_number ? $parent_part_number . '.' : '') . ($index + 1);
-
+        
         if (isset($part->parts) && is_array($part->parts)) {
             list($sub_id, $sub_reason) = parse_mime_parts($inbox, $uid, $part->parts, $current_part_number);
             if ($sub_id) $recipient_id = $sub_id;
@@ -194,7 +191,9 @@ function parse_mime_parts($inbox, $uid, $parts, $parent_part_number = '')
             if ($reason) $bounce_reason = $reason;
         }
 
-        if (isset($part->type) && $part->type == 1 && isset($part->subtype) && $part->subtype == 'RFC822') {
+        // --- CORRECCIÓN CLAVE ---
+        // El tipo de una parte 'message' es 2, no 1.
+        if (isset($part->type) && $part->type == 2 && isset($part->subtype) && $part->subtype == 'RFC822') {
             $body = imap_fetchbody($inbox, $uid, $current_part_number, FT_UID);
             $id = extract_custom_header($body, 'X-Campaign-Recipient-ID');
             if ($id) $recipient_id = $id;
@@ -203,8 +202,7 @@ function parse_mime_parts($inbox, $uid, $parts, $parent_part_number = '')
     return [$recipient_id, $bounce_reason];
 }
 
-function extract_custom_header($header_text, $header_name)
-{
+function extract_custom_header($header_text, $header_name) {
     $pattern = "/^" . preg_quote($header_name, '/') . ":\s*(.*)$/im";
     if (preg_match($pattern, $header_text, $matches)) {
         return trim($matches[1]);
@@ -212,24 +210,22 @@ function extract_custom_header($header_text, $header_name)
     return null;
 }
 
-function extract_bounce_reason($body)
-{
+function extract_bounce_reason($body) {
     // Patrón mejorado para capturar mensajes multilínea
     $pattern = '/Diagnostic-Code: (.*?)(?:\r\n\r\n|\r\n[A-Z]|$)/is';
     if (preg_match($pattern, $body, $matches)) {
         return trim(preg_replace('/\s+/', ' ', $matches[1]));
     }
-
+    
     $pattern = '/Status: (.*)/i';
     if (preg_match($pattern, $body, $matches)) {
         return trim($matches[1]);
     }
-
+    
     return 'Razón no especificada.';
 }
 
-function mailbox_exists($stream, $imap_path, $mailbox)
-{
+function mailbox_exists($stream, $imap_path, $mailbox) {
     $mailboxes = imap_list($stream, $imap_path, '*');
     if ($mailboxes === false) return false;
     $encoded_mailbox_name = imap_utf7_encode($imap_path . $mailbox);
