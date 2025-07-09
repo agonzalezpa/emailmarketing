@@ -1060,6 +1060,7 @@ class EmailMarketingAPI
         foreach ($campaigns as &$campaign) {
             // Calcular el total de intentos reales: sent + bounced + failed
             $campaign['total_attempts'] = $campaign['total_sent'] + $campaign['total_bounced'] + $campaign['total_failed'];
+            $campaign['total_attempts_2'] = $campaign['total_sent'] + $campaign['total_bounced'] ;
 
             // Tasas basadas en correos enviados exitosamente (para apertura y clic)
             if ($campaign['total_sent'] > 0) {
@@ -1072,8 +1073,8 @@ class EmailMarketingAPI
 
             // Tasas de rebote y fallo basadas en el total de intentos reales
             if ($campaign['total_attempts'] > 0) {
-                $campaign['bounce_rate'] = round(($campaign['total_bounced'] / $campaign['total_attempts']) * 100, 2);
-                $campaign['failure_rate'] = round(($campaign['total_failed'] / $campaign['total_attempts']) * 100, 2);
+                $campaign['bounce_rate'] = round(($campaign['total_bounced'] / $campaign['total_attempts_2']) * 100, 2);
+                $campaign['failure_rate'] = round(($campaign['total_failed'] / $campaign['total_attempts_2']) * 100, 2);
             } else {
                 $campaign['bounce_rate'] = 0;
                 $campaign['failure_rate'] = 0;
