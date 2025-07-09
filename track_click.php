@@ -39,8 +39,8 @@ if (!empty($_GET['campaign_id']) && !empty($_GET['contact_id']) && !empty($_GET[
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
             $stmt = $pdo->prepare(
-                "INSERT INTO email_events (campaign_id, contact_id, event_type, ip_address, user_agent) 
-                 VALUES (?, ?, 'clicked', ?, ?)"
+                "INSERT INTO email_events (campaign_id, contact_id, event_type, event_data, ip_address, user_agent) 
+                 VALUES (?, ?, 'clicked', ?, ?, ?)"
             );
             // Guardamos la URL de destino (ya decodificada) en 'event_data'.
             $stmt->execute([$campaign_id, $contact_id, $destination_url, $ip_address, $user_agent]);
