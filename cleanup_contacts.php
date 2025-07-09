@@ -1,4 +1,5 @@
 <?php
+
 /**
  * cleanup_contacts.php
  *
@@ -16,7 +17,8 @@ define('DB_PASS', 'Olivera19%');
 define('LOG_FILE', __DIR__ . '/cleanup_contacts.log');
 
 // --- FUNCIÓN DE LOGGING ---
-function log_message($message) {
+function log_message($message)
+{
     $timestamp = date('Y-m-d H:i:s');
     file_put_contents(LOG_FILE, "[$timestamp] " . $message . "\n", FILE_APPEND);
 }
@@ -37,12 +39,22 @@ try {
 try {
     // 1. Encontrar todos los IDs de contacto únicos que han rebotado o fallado permanentemente
     log_message("Buscando IDs de contactos para desactivar...");
+    // Se une con la tabla 'contacts' para filtrar solo los que están activos.
     $stmt = $pdo->query("
-        SELECT DISTINCT contact_id 
-        FROM campaign_recipients 
-        WHERE status = 'bounced' OR retry_count >= 3
+        SELECT DISTINCT cr.contact_id 
+        FROM campaign_recipients cr
+        JOIN contacts c ON cr.contact_id = c.id
+        WHERE (cr.status = 'bounced' OR cr.retry_count >= 3)
+          AND c.status != 'inactive'
     ");
-    
+
+
+    $stmt = $this->pdo->prepare($sql);
+    $stmt->execute();
+
+    $contacts = $stmt->fetchAll();
+
+
     $contact_ids_to_disable = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
     if (empty($contact_ids_to_disable)) {
@@ -55,7 +67,7 @@ try {
 
     // 2. Actualizar el estado de esos contactos en la tabla `contacts`
     // Usamos 'inactive' para mantener la integridad referencial pero evitar futuros envíos.
-    
+
     // Crear una cadena de marcadores de posición (?, ?, ?) para la consulta IN
     $placeholders = implode(',', array_fill(0, count($contact_ids_to_disable), '?'));
 
@@ -69,12 +81,9 @@ try {
 
     $affected_rows = $updateStmt->rowCount();
     log_message("Se actualizaron exitosamente " . $affected_rows . " registros en la tabla 'contacts'.");
-
 } catch (PDOException $e) {
     log_message("Ha ocurrido un error durante el proceso de limpieza: " . $e->getMessage());
 }
 
 log_message("Proceso de limpieza finalizado.");
 log_message("============================================");
-
-?>
