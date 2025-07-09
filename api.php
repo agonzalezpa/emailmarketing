@@ -980,7 +980,7 @@ class EmailMarketingAPI
     }
 
     // Campaign methods
-    private function getCampaigns()
+    private function getCampaignsOLD()
     {
         $pdo = $this->getConnection();
         // Consulta SQL mejorada para incluir estadísticas
@@ -1022,6 +1022,55 @@ class EmailMarketingAPI
                 // Evitar división por cero si no se han enviado correos
                 $campaign['open_rate'] = 0;
                 $campaign['click_rate'] = 0;
+            }
+        }
+        unset($campaign); // Buena práctica: eliminar la referencia después del bucle
+
+        $this->sendResponse($campaigns);
+    }
+    private function getCampaigns()
+    {
+        $pdo = $this->getConnection();
+        // Consulta SQL mejorada para incluir todas las estadísticas
+        $stmt = $pdo->query("
+        SELECT 
+            c.*, 
+            s.name as sender_name, 
+            s.email as sender_email,
+            
+            -- Estadísticas de envío
+            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'sent') AS total_sent,
+            
+            -- Nuevas estadísticas de fallos y rebotes
+            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'bounced') AS total_bounced,
+            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.retry_count >= 3) AS total_failed,
+            
+            -- Estadísticas de interacción
+            (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'opened') AS total_opened,
+            (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'clicked') AS total_clicked
+
+        FROM campaigns c 
+        LEFT JOIN senders s ON c.sender_id = s.id 
+        ORDER BY c.created_at DESC
+    ");
+        $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Iterar sobre los resultados para calcular los porcentajes de forma segura
+        foreach ($campaigns as &$campaign) { // Usamos '&' para modificar el array directamente
+            if ($campaign['total_sent'] > 0) {
+                // Calcular porcentajes de interacción
+                $campaign['open_rate'] = round(($campaign['total_opened'] / $campaign['total_sent']) * 100, 2);
+                $campaign['click_rate'] = round(($campaign['total_clicked'] / $campaign['total_sent']) * 100, 2);
+
+                // Calcular porcentajes de rebotes y fallos
+                $campaign['bounce_rate'] = round(($campaign['total_bounced'] / $campaign['total_sent']) * 100, 2);
+                $campaign['failure_rate'] = round(($campaign['total_failed'] / $campaign['total_sent']) * 100, 2);
+            } else {
+                // Evitar división por cero si no se han enviado correos
+                $campaign['open_rate'] = 0;
+                $campaign['click_rate'] = 0;
+                $campaign['bounce_rate'] = 0;
+                $campaign['failure_rate'] = 0;
             }
         }
         unset($campaign); // Buena práctica: eliminar la referencia después del bucle
@@ -1310,50 +1359,50 @@ class EmailMarketingAPI
 
 
     /**
- * Calcula y devuelve las estadísticas generales del dashboard.
- * Esta versión calcula los promedios directamente desde los datos de eventos
- * para asegurar la precisión en tiempo real.
- */
-private function handleStats()
-{
-    $pdo = $this->getConnection();
-    $stats = [];
+     * Calcula y devuelve las estadísticas generales del dashboard.
+     * Esta versión calcula los promedios directamente desde los datos de eventos
+     * para asegurar la precisión en tiempo real.
+     */
+    private function handleStats()
+    {
+        $pdo = $this->getConnection();
+        $stats = [];
 
-    // 1. Total de campañas (sin cambios)
-    $stmt = $pdo->query("SELECT COUNT(*) FROM campaigns");
-    $stats['total_campaigns'] = (int) $stmt->fetchColumn();
+        // 1. Total de campañas (sin cambios)
+        $stmt = $pdo->query("SELECT COUNT(*) FROM campaigns");
+        $stats['total_campaigns'] = (int) $stmt->fetchColumn();
 
-    // 2. Total de contactos activos (sin cambios)
-    $stmt = $pdo->query("SELECT COUNT(*) FROM contacts WHERE status = 'active'");
-    $stats['total_contacts'] = (int) $stmt->fetchColumn();
+        // 2. Total de contactos activos (sin cambios)
+        $stmt = $pdo->query("SELECT COUNT(*) FROM contacts WHERE status = 'active'");
+        $stats['total_contacts'] = (int) $stmt->fetchColumn();
 
-    // --- LÓGICA DE CÁLCULO DE TASAS CORREGIDA ---
+        // --- LÓGICA DE CÁLCULO DE TASAS CORREGIDA ---
 
-    // 3. Contar el número total de correos enviados con éxito en TODAS las campañas
-    $stmt = $pdo->query("SELECT COUNT(*) FROM campaign_recipients WHERE status = 'sent'");
-    $total_sent = (int) $stmt->fetchColumn();
+        // 3. Contar el número total de correos enviados con éxito en TODAS las campañas
+        $stmt = $pdo->query("SELECT COUNT(*) FROM campaign_recipients WHERE status = 'sent'");
+        $total_sent = (int) $stmt->fetchColumn();
 
-    // 4. Contar el número total de eventos de apertura (ya filtrados por tu script)
-    $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'opened'");
-    $total_opened = (int) $stmt->fetchColumn();
+        // 4. Contar el número total de eventos de apertura (ya filtrados por tu script)
+        $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'opened'");
+        $total_opened = (int) $stmt->fetchColumn();
 
-    // 5. Contar el número total de eventos de clic
-    $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'clicked'");
-    $total_clicked = (int) $stmt->fetchColumn();
+        // 5. Contar el número total de eventos de clic
+        $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'clicked'");
+        $total_clicked = (int) $stmt->fetchColumn();
 
-    // 6. Calcular los promedios generales y redondear
-    // Se comprueba que total_sent sea mayor que 0 para evitar errores de división por cero.
-    if ($total_sent > 0) {
-        $stats['avg_open_rate'] = round(($total_opened / $total_sent) * 100, 2);
-        $stats['avg_click_rate'] = round(($total_clicked / $total_sent) * 100, 2);
-    } else {
-        // Si no se han enviado correos, las tasas son 0.
-        $stats['avg_open_rate'] = 0;
-        $stats['avg_click_rate'] = 0;
+        // 6. Calcular los promedios generales y redondear
+        // Se comprueba que total_sent sea mayor que 0 para evitar errores de división por cero.
+        if ($total_sent > 0) {
+            $stats['avg_open_rate'] = round(($total_opened / $total_sent) * 100, 2);
+            $stats['avg_click_rate'] = round(($total_clicked / $total_sent) * 100, 2);
+        } else {
+            // Si no se han enviado correos, las tasas son 0.
+            $stats['avg_open_rate'] = 0;
+            $stats['avg_click_rate'] = 0;
+        }
+
+        $this->sendResponse($stats);
     }
-
-    $this->sendResponse($stats);
-}
 
     private function testSmtpConnection($config)
     {

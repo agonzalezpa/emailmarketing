@@ -501,21 +501,21 @@ class EmailMarketingApp {
         }
     }
 
-    async loadCampaigns() {
-        try {
-            const campaigns = await this.apiRequest('campaigns');
-            const campaignGrid = document.getElementById('campaigns-grid');
-
-            if (campaigns.length === 0) {
-                campaignGrid.innerHTML = `
+   async loadCampaigns() {
+    try {
+        const campaigns = await this.apiRequest('campaigns');
+        const campaignGrid = document.getElementById('campaigns-grid');
+        
+        if (campaigns.length === 0) {
+            campaignGrid.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-rocket"></i>
                     <p>No hay campañas creadas</p>
                     <button class="btn btn-outline" onclick="emailApp.openCampaignModal()">Crear Primera Campaña</button>
                 </div>
             `;
-            } else {
-                campaignGrid.innerHTML = campaigns.map(campaign => `
+        } else {
+            campaignGrid.innerHTML = campaigns.map(campaign => `
                 <div class="card">
                     <div style="padding: 1.5rem;">
                         <h3>${campaign.name}</h3>
@@ -524,9 +524,9 @@ class EmailMarketingApp {
                         
                         <p><strong>Enviados:</strong> ${campaign.total_sent || 0} de ${campaign.total_recipients || 0} destinatarios</p>
                         <p><strong>Estado:</strong> ${campaign.status}</p>
-                        <p><strong>Iniciada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
+                        <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
                         
-                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
                             <div>
                                 <strong>${campaign.open_rate || 0}%</strong>
                                 <small style="display: block; color: var(--text-secondary);">Apertura (${campaign.total_opened || 0})</small>
@@ -535,22 +535,32 @@ class EmailMarketingApp {
                                 <strong>${campaign.click_rate || 0}%</strong>
                                 <small style="display: block; color: var(--text-secondary);">Clicks (${campaign.total_clicked || 0})</small>
                             </div>
+                            
+                            <!-- NUEVAS ESTADÍSTICAS AÑADIDAS -->
+                            <div>
+                                <strong>${campaign.bounce_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Rebotados (${campaign.total_bounced || 0})</small>
+                            </div>
+                            <div>
+                                <strong>${campaign.failure_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Fallidos (${campaign.total_failed || 0})</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             `).join('');
-            }
-        } catch (error) {
-            console.error("Error al cargar campañas:", error); // Añadido para depuración
-            document.getElementById('campaigns-grid').innerHTML = `
+        }
+    } catch (error) {
+        console.error("Error al cargar campañas:", error);
+        document.getElementById('campaigns-grid').innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Error al cargar campañas</p>
                 <button class="btn btn-outline" onclick="emailApp.loadCampaigns()">Reintentar</button>
             </div>
         `;
-        }
     }
+}
 
     async loadDashboard() {
         try {
