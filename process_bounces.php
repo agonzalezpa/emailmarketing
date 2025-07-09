@@ -4,7 +4,7 @@
  * process_bounces.php
  *
  * Este script se conecta a múltiples buzones de correo para procesar rebotes (bounces).
- * Es "MIME-aware" y registra cada paso en un archivo de log para depuración.
+ * Es "MIME-aware" y registra cada paso y un resumen final en un archivo de log.
  *
  * Lógica:
  * 1. Obtiene los remitentes activos desde la base de datos.
@@ -14,7 +14,7 @@
  * 5. Si no lo encuentra en las partes MIME, lo busca en el cuerpo principal (fallback).
  * 6. Si encuentra un ID válido, actualiza el registro correspondiente en `campaign_recipients`.
  * 7. Mueve el correo procesado a una carpeta 'Bounces'.
- * 8. Registra todas las acciones y errores en 'process_bounces.log'.
+ * 8. Registra todas las acciones y un resumen final en 'process_bounces.log'.
  */
 
 // --- CONFIGURACIÓN ---
@@ -35,6 +35,13 @@ function log_message($message)
 // --- INICIO DEL SCRIPT ---
 log_message("============================================");
 log_message("Iniciando proceso de rebotes...");
+
+// Inicializar contadores para el resumen final
+$total_senders_processed = 0;
+$total_emails_checked = 0;
+$total_bounces_detected = 0;
+$total_db_updates = 0;
+$total_emails_moved = 0;
 
 // Conexión a la base de datos
 try {
@@ -64,6 +71,7 @@ log_message("Se encontraron " . count($senders) . " remitentes para procesar.");
 
 // 2. Iterar sobre cada remitente
 foreach ($senders as $sender) {
+    $total_senders_processed++;
     log_message("--- Procesando remitente: {$sender['email']} ---");
 
     $imap_port = $sender['imap_port'] ?? 993;
@@ -74,7 +82,7 @@ foreach ($senders as $sender) {
 
     if (!$inbox) {
         log_message("ERROR: No se pudo conectar al buzón de {$sender['email']}. Razón: " . imap_last_error());
-        continue; // Saltar al siguiente remitente
+        continue;
     }
 
     log_message("Conexión IMAP exitosa para {$sender['email']}.");
@@ -83,7 +91,7 @@ foreach ($senders as $sender) {
         if (@imap_createmailbox($inbox, imap_utf7_encode($imap_path . $processed_mailbox_folder))) {
             log_message("Carpeta '$processed_mailbox_folder' creada exitosamente.");
         } else {
-            log_message("ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'. Puede que ya exista o sea un problema de permisos.");
+            log_message("ADVERTENCIA: No se pudo crear la carpeta '$processed_mailbox_folder'.");
         }
     }
 
@@ -94,6 +102,7 @@ foreach ($senders as $sender) {
     $emails = imap_search($inbox, $search_criteria, SE_UID);
 
     if ($emails) {
+        $total_emails_checked += count($emails);
         log_message("Se encontraron " . count($emails) . " correos para revisar.");
 
         $updateStmt = $pdo->prepare(
@@ -105,13 +114,10 @@ foreach ($senders as $sender) {
             $recipient_id = null;
             $bounce_reason = 'Razón no especificada.';
 
-            // Primero, intentar analizar como un correo multipartes (el caso más común)
             if (isset($structure->parts) && is_array($structure->parts)) {
                 list($recipient_id, $bounce_reason) = parse_mime_parts($inbox, $uid, $structure->parts);
             }
 
-            // --- FALLBACK ---
-            // Si el análisis MIME no encontró un ID (podría ser un correo de texto simple)
             if (!$recipient_id) {
                 log_message(" - No se encontró ID en partes MIME para UID #$uid. Analizando como correo simple.");
                 $header_text = imap_fetchheader($inbox, $uid, FT_UID);
@@ -123,11 +129,13 @@ foreach ($senders as $sender) {
             }
 
             if ($recipient_id) {
+                $total_bounces_detected++;
                 log_message(" - Rebote detectado para el destinatario ID: $recipient_id");
 
                 try {
                     $updateStmt->execute([$bounce_reason, $recipient_id]);
                     if ($updateStmt->rowCount() > 0) {
+                        $total_db_updates++;
                         log_message("   -> Registro actualizado a 'bounced'.");
                     } else {
                         log_message("   -> ADVERTENCIA: El registro con ID $recipient_id no se encontró o ya estaba actualizado.");
@@ -139,8 +147,9 @@ foreach ($senders as $sender) {
                 log_message(" - Correo UID #$uid ignorado (no se encontró X-Campaign-Recipient-ID).");
             }
 
-            // Mover el correo procesado
-            imap_mail_move($inbox, "$uid", $processed_mailbox_folder, CP_UID);
+            if (imap_mail_move($inbox, "$uid", $processed_mailbox_folder, CP_UID)) {
+                $total_emails_moved++;
+            }
         }
 
         imap_expunge($inbox);
@@ -151,6 +160,13 @@ foreach ($senders as $sender) {
     imap_close($inbox);
 }
 
+// --- RESUMEN FINAL ---
+log_message("--- RESUMEN DE LA EJECUCIÓN ---");
+log_message("Remitentes procesados: " . $total_senders_processed);
+log_message("Correos totales revisados: " . $total_emails_checked);
+log_message("Rebotes válidos detectados: " . $total_bounces_detected);
+log_message("Registros actualizados en la BD: " . $total_db_updates);
+log_message("Correos movidos a la carpeta 'Bounces': " . $total_emails_moved);
 log_message("Proceso de rebotes finalizado.");
 log_message("============================================");
 
