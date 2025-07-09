@@ -1309,48 +1309,51 @@ class EmailMarketingAPI
     }
 
 
-    private function handleStats()
-    {
-        $pdo = $this->getConnection();
+    /**
+ * Calcula y devuelve las estadísticas generales del dashboard.
+ * Esta versión calcula los promedios directamente desde los datos de eventos
+ * para asegurar la precisión en tiempo real.
+ */
+private function handleStats()
+{
+    $pdo = $this->getConnection();
+    $stats = [];
 
-        // Get overview stats
-        $stats = [];
+    // 1. Total de campañas (sin cambios)
+    $stmt = $pdo->query("SELECT COUNT(*) FROM campaigns");
+    $stats['total_campaigns'] = (int) $stmt->fetchColumn();
 
-        // Total campaigns
-        $stmt = $pdo->query("SELECT COUNT(*) FROM campaigns");
-        $stats['total_campaigns'] = $stmt->fetchColumn();
+    // 2. Total de contactos activos (sin cambios)
+    $stmt = $pdo->query("SELECT COUNT(*) FROM contacts WHERE is_unsubscribed = 0");
+    $stats['total_contacts'] = (int) $stmt->fetchColumn();
 
-        // Total contacts
-        $stmt = $pdo->query("SELECT COUNT(*) FROM contacts WHERE status = 'active'");
-        $stats['total_contacts'] = $stmt->fetchColumn();
+    // --- LÓGICA DE CÁLCULO DE TASAS CORREGIDA ---
 
-        // Average open rate
-        $stmt = $pdo->query("
-            SELECT AVG((opened_count / NULLIF(delivered_count, 0)) * 100) 
-            FROM campaigns WHERE status = 'sent'
-        ");
-        $stats['avg_open_rate'] = round($stmt->fetchColumn() ?: 0, 2);
+    // 3. Contar el número total de correos enviados con éxito en TODAS las campañas
+    $stmt = $pdo->query("SELECT COUNT(*) FROM campaign_recipients WHERE status = 'sent'");
+    $total_sent = (int) $stmt->fetchColumn();
 
-        // Average click rate
-        $stmt = $pdo->query("
-            SELECT AVG((clicked_count / NULLIF(delivered_count, 0)) * 100) 
-            FROM campaigns WHERE status = 'sent'
-        ");
-        $stats['avg_click_rate'] = round($stmt->fetchColumn() ?: 0, 2);
+    // 4. Contar el número total de eventos de apertura (ya filtrados por tu script)
+    $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'opened'");
+    $total_opened = (int) $stmt->fetchColumn();
 
-        // Recent campaigns (if view exists)
-        try {
-            $stmt = $pdo->query("
-                SELECT * FROM campaign_stats 
-                ORDER BY sent_at DESC LIMIT 10
-            ");
-            $stats['recent_campaigns'] = $stmt->fetchAll();
-        } catch (Exception $e) {
-            $stats['recent_campaigns'] = [];
-        }
+    // 5. Contar el número total de eventos de clic
+    $stmt = $pdo->query("SELECT COUNT(*) FROM email_events WHERE event_type = 'click'");
+    $total_clicked = (int) $stmt->fetchColumn();
 
-        $this->sendResponse($stats);
+    // 6. Calcular los promedios generales y redondear
+    // Se comprueba que total_sent sea mayor que 0 para evitar errores de división por cero.
+    if ($total_sent > 0) {
+        $stats['avg_open_rate'] = round(($total_opened / $total_sent) * 100, 2);
+        $stats['avg_click_rate'] = round(($total_clicked / $total_sent) * 100, 2);
+    } else {
+        // Si no se han enviado correos, las tasas son 0.
+        $stats['avg_open_rate'] = 0;
+        $stats['avg_click_rate'] = 0;
     }
+
+    $this->sendResponse($stats);
+}
 
     private function testSmtpConnection($config)
     {
