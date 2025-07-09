@@ -11,9 +11,10 @@
  * 2. Para cada remitente, se conecta a su buzón IMAP.
  * 3. Busca correos recibidos desde el inicio del día actual.
  * 4. Analiza la estructura MIME de cada correo para encontrar el ID y la razón del rebote.
- * 5. Si encuentra un ID válido, actualiza el registro correspondiente en `campaign_recipients`.
- * 6. Mueve el correo procesado a una carpeta 'Bounces'.
- * 7. Registra todas las acciones y errores en 'process_bounces.log'.
+ * 5. Si no lo encuentra en las partes MIME, lo busca en el cuerpo principal (fallback).
+ * 6. Si encuentra un ID válido, actualiza el registro correspondiente en `campaign_recipients`.
+ * 7. Mueve el correo procesado a una carpeta 'Bounces'.
+ * 8. Registra todas las acciones y errores en 'process_bounces.log'.
  */
 
 // --- CONFIGURACIÓN ---
@@ -104,8 +105,21 @@ foreach ($senders as $sender) {
             $recipient_id = null;
             $bounce_reason = 'Razón no especificada.';
 
+            // Primero, intentar analizar como un correo multipartes (el caso más común)
             if (isset($structure->parts) && is_array($structure->parts)) {
                 list($recipient_id, $bounce_reason) = parse_mime_parts($inbox, $uid, $structure->parts);
+            }
+
+            // --- FALLBACK ---
+            // Si el análisis MIME no encontró un ID (podría ser un correo de texto simple)
+            if (!$recipient_id) {
+                log_message(" - No se encontró ID en partes MIME para UID #$uid. Analizando como correo simple.");
+                $header_text = imap_fetchheader($inbox, $uid, FT_UID);
+                $body = imap_body($inbox, $uid, FT_UID);
+                $recipient_id = extract_custom_header($header_text, 'X-Campaign-Recipient-ID');
+                if ($recipient_id) {
+                    $bounce_reason = extract_bounce_reason($body);
+                }
             }
 
             if ($recipient_id) {
@@ -122,7 +136,7 @@ foreach ($senders as $sender) {
                     log_message("   -> ERROR de BD al actualizar el registro ID $recipient_id: " . $e->getMessage());
                 }
             } else {
-                log_message(" - Correo UID #$uid ignorado (no es un rebote de campaña válido).");
+                log_message(" - Correo UID #$uid ignorado (no se encontró X-Campaign-Recipient-ID).");
             }
 
             // Mover el correo procesado
@@ -184,6 +198,7 @@ function extract_custom_header($header_text, $header_name)
 
 function extract_bounce_reason($body)
 {
+    // Patrón mejorado para capturar mensajes multilínea
     $pattern = '/Diagnostic-Code: (.*?)(?:\r\n\r\n|\r\n[A-Z]|$)/is';
     if (preg_match($pattern, $body, $matches)) {
         return trim(preg_replace('/\s+/', ' ', $matches[1]));
