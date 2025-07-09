@@ -504,7 +504,19 @@ class EmailMarketingApp {
   async loadCampaigns() {
     try {
         const response = await this.apiRequest('campaigns');
-        const campaigns = response.data; // Asumiendo que la API devuelve { success: true, data: [...] }
+         // Validación mejorada de la respuesta
+        let campaigns;
+        if (response && response.data && Array.isArray(response.data)) {
+            campaigns = response.data;
+        } else if (response && Array.isArray(response)) {
+            // En caso de que la API devuelva directamente el array
+            campaigns = response;
+        } else {
+            // Si no hay datos válidos, usar array vacío
+            campaigns = [];
+            console.warn('Respuesta de API no tiene formato esperado:', response);
+        }
+        
         const campaignGrid = document.getElementById('campaigns-grid');
         
         if (campaigns.length === 0) {
