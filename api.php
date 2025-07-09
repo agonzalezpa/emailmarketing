@@ -1032,51 +1032,58 @@ class EmailMarketingAPI
     private function getCampaigns()
     {
         $pdo = $this->getConnection();
-        // Consulta SQL mejorada para incluir todas las estadísticas
+        // Consulta SQL corregida para calcular correctamente las estadísticas
         $stmt = $pdo->query("
-        SELECT 
-            c.*, 
-            s.name as sender_name, 
-            s.email as sender_email,
-            
-            -- Total de correos que se intentaron enviar (exitosos + fallidos permanentes)
-            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND (cr.status = 'sent' OR cr.retry_count >= 3)) AS total_attempts,
-            
-            -- Total de correos enviados con éxito (base para apertura, clic, etc.)
-            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'sent') AS total_sent,
-            
-            -- Contadores de fallos y rebotes
-            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'bounced') AS total_bounced,
-            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.retry_count >= 3) AS total_failed,
-            
-            -- Contadores de interacción
-            (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'opened') AS total_opened,
-            (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'clicked') AS total_clicked
+    SELECT 
+        c.*, 
+        s.name as sender_name, 
+        s.email as sender_email,
+        
+        -- Total de correos enviados con éxito (base para apertura, clic, etc.)
+        (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'sent') AS total_sent,
+        
+        -- Contadores de fallos y rebotes
+        (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'bounced') AS total_bounced,
+        (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'failed') AS total_failed,
+        
+        -- Contadores de interacción (solo sobre emails enviados exitosamente)
+        (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'opened') AS total_opened,
+        (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'clicked') AS total_clicked
 
-        FROM campaigns c 
-        LEFT JOIN senders s ON c.sender_id = s.id 
-        ORDER BY c.created_at DESC
+    FROM campaigns c 
+    LEFT JOIN senders s ON c.sender_id = s.id 
+    ORDER BY c.created_at DESC
     ");
         $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Iterar sobre los resultados para calcular los porcentajes de forma segura
+        // Iterar sobre los resultados para calcular los porcentajes correctamente
         foreach ($campaigns as &$campaign) {
-            // Tasas basadas en correos enviados exitosamente
+            // Calcular el total de intentos reales: sent + bounced + failed
+            $campaign['total_attempts'] = $campaign['total_sent'] + $campaign['total_bounced'] + $campaign['total_failed'];
+
+            // Tasas basadas en correos enviados exitosamente (para apertura y clic)
             if ($campaign['total_sent'] > 0) {
                 $campaign['open_rate'] = round(($campaign['total_opened'] / $campaign['total_sent']) * 100, 2);
                 $campaign['click_rate'] = round(($campaign['total_clicked'] / $campaign['total_sent']) * 100, 2);
-                $campaign['bounce_rate'] = round(($campaign['total_bounced'] / $campaign['total_sent']) * 100, 2);
             } else {
                 $campaign['open_rate'] = 0;
                 $campaign['click_rate'] = 0;
-                $campaign['bounce_rate'] = 0;
             }
 
-            // Tasa de fallo basada en el total de intentos
+            // Tasas de rebote y fallo basadas en el total de intentos reales
             if ($campaign['total_attempts'] > 0) {
+                $campaign['bounce_rate'] = round(($campaign['total_bounced'] / $campaign['total_attempts']) * 100, 2);
                 $campaign['failure_rate'] = round(($campaign['total_failed'] / $campaign['total_attempts']) * 100, 2);
             } else {
+                $campaign['bounce_rate'] = 0;
                 $campaign['failure_rate'] = 0;
+            }
+
+            // Opcional: Calcular tasa de éxito
+            if ($campaign['total_attempts'] > 0) {
+                $campaign['success_rate'] = round(($campaign['total_sent'] / $campaign['total_attempts']) * 100, 2);
+            } else {
+                $campaign['success_rate'] = 0;
             }
         }
         unset($campaign);
