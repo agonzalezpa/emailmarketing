@@ -501,9 +501,10 @@ class EmailMarketingApp {
         }
     }
 
-   async loadCampaigns() {
+  async loadCampaigns() {
     try {
-        const campaigns = await this.apiRequest('campaigns');
+        const response = await this.apiRequest('campaigns');
+        const campaigns = response.data; // Asumiendo que la API devuelve { success: true, data: [...] }
         const campaignGrid = document.getElementById('campaigns-grid');
         
         if (campaigns.length === 0) {
@@ -522,7 +523,10 @@ class EmailMarketingApp {
                         <p><strong>Asunto:</strong> ${campaign.subject}</p>
                         <p><strong>Remitente:</strong> ${campaign.sender_name || 'N/A'}</p>
                         
-                        <p><strong>Enviados:</strong> ${campaign.total_sent || 0} de ${campaign.total_recipients || 0} destinatarios</p>
+                        <!-- ESTADÍSTICAS DE ENVÍO MEJORADAS -->
+                        <p><strong>Intentos de Envío:</strong> ${campaign.total_attempts || 0} de ${campaign.total_recipients || 0} destinatarios</p>
+                        <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>
+                        
                         <p><strong>Estado:</strong> ${campaign.status}</p>
                         <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
                         

@@ -1028,6 +1028,7 @@ class EmailMarketingAPI
 
         $this->sendResponse($campaigns);
     }
+
     private function getCampaigns()
     {
         $pdo = $this->getConnection();
@@ -1038,14 +1039,17 @@ class EmailMarketingAPI
             s.name as sender_name, 
             s.email as sender_email,
             
-            -- Estadísticas de envío
+            -- Total de correos que se intentaron enviar (exitosos + fallidos permanentes)
+            (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND (cr.status = 'sent' OR cr.retry_count >= 3)) AS total_attempts,
+            
+            -- Total de correos enviados con éxito (base para apertura, clic, etc.)
             (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'sent') AS total_sent,
             
-            -- Nuevas estadísticas de fallos y rebotes
+            -- Contadores de fallos y rebotes
             (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.status = 'bounced') AS total_bounced,
             (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.campaign_id = c.id AND cr.retry_count >= 3) AS total_failed,
             
-            -- Estadísticas de interacción
+            -- Contadores de interacción
             (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'opened') AS total_opened,
             (SELECT COUNT(DISTINCT ee.contact_id) FROM email_events ee WHERE ee.campaign_id = c.id AND ee.event_type = 'clicked') AS total_clicked
 
@@ -1056,24 +1060,26 @@ class EmailMarketingAPI
         $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Iterar sobre los resultados para calcular los porcentajes de forma segura
-        foreach ($campaigns as &$campaign) { // Usamos '&' para modificar el array directamente
+        foreach ($campaigns as &$campaign) {
+            // Tasas basadas en correos enviados exitosamente
             if ($campaign['total_sent'] > 0) {
-                // Calcular porcentajes de interacción
                 $campaign['open_rate'] = round(($campaign['total_opened'] / $campaign['total_sent']) * 100, 2);
                 $campaign['click_rate'] = round(($campaign['total_clicked'] / $campaign['total_sent']) * 100, 2);
-
-                // Calcular porcentajes de rebotes y fallos
                 $campaign['bounce_rate'] = round(($campaign['total_bounced'] / $campaign['total_sent']) * 100, 2);
-                $campaign['failure_rate'] = round(($campaign['total_failed'] / $campaign['total_sent']) * 100, 2);
             } else {
-                // Evitar división por cero si no se han enviado correos
                 $campaign['open_rate'] = 0;
                 $campaign['click_rate'] = 0;
                 $campaign['bounce_rate'] = 0;
+            }
+
+            // Tasa de fallo basada en el total de intentos
+            if ($campaign['total_attempts'] > 0) {
+                $campaign['failure_rate'] = round(($campaign['total_failed'] / $campaign['total_attempts']) * 100, 2);
+            } else {
                 $campaign['failure_rate'] = 0;
             }
         }
-        unset($campaign); // Buena práctica: eliminar la referencia después del bucle
+        unset($campaign);
 
         $this->sendResponse($campaigns);
     }
