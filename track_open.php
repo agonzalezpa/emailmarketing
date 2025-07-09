@@ -98,7 +98,7 @@ if (!$is_bot && !empty($_GET['campaign_id']) && !empty($_GET['contact_id'])) {
         } catch (PDOException $e) {
             // Si hay un error de base de datos, lo registramos
             $errorMessage = "ERROR DE APERTURA: " . $e->getMessage();
-            file_put_contents(__DIR__ . '/error_log.txt', $errorMessage . "\n", FILE_APPEND);
+            file_put_contents(__DIR__ . '/error_log', $errorMessage . "\n", FILE_APPEND);
         }
     }
 }
