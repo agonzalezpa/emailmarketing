@@ -49,6 +49,8 @@ class EmailMarketingApp {
             });
         });
 
+
+
         // Database connection test
         //  document.getElementById('test-db-connection').addEventListener('click', () => {
         //   this.testDatabaseConnection();
@@ -328,7 +330,26 @@ class EmailMarketingApp {
             this.showToast('error', 'Error al crear contacto', error.message);
         }
     }
+    addCustomField(key = '', value = '') {
+        const container = document.getElementById('custom-fields-container');
+        // Comprobación de seguridad para evitar errores si el contenedor no existe
+        if (!container) {
+            console.error('El contenedor de campos personalizados "custom-fields-container" no se encontró en el DOM.');
+            return;
+        }
+        const fieldId = Date.now() + Math.random(); // Usar Math.random para mayor unicidad
 
+        const fieldHTML = `
+        <div class="custom-field-group" id="field-group-${fieldId}">
+            <input type="text" class="custom-field-key" placeholder="Nombre del Campo (ej. provincia)" value="${this.escapeHTML(key)}">
+            <input type="text" class="custom-field-value" placeholder="Valor" value="${this.escapeHTML(value)}">
+            <button type="button" class="btn-icon" onclick="document.getElementById('field-group-${fieldId}').remove()">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+        container.insertAdjacentHTML('beforeend', fieldHTML);
+    }
     /**
  * Recopila los datos del formulario, incluyendo los campos personalizados y las listas, y los envía a la API.
  */
@@ -1752,24 +1773,7 @@ class EmailMarketingApp {
     }
 
 }
-/**
- * Añade un par de campos (clave y valor) para un nuevo campo personalizado.
- */
-addCustomField(key = '', value = '') {
-    const container = document.getElementById('custom-fields-container');
-    const fieldId = Date.now(); // ID único para agrupar los campos
 
-    const fieldHTML = `
-        <div class="custom-field-group" id="field-group-${fieldId}">
-            <input type="text" class="custom-field-key" placeholder="Nombre del Campo (ej. provincia)" value="${this.escapeHTML(key)}">
-            <input type="text" class="custom-field-value" placeholder="Valor" value="${this.escapeHTML(value)}">
-            <button type="button" class="btn-icon" onclick="document.getElementById('field-group-${fieldId}').remove()">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', fieldHTML);
-}
 
 // Initialize the app
 const emailApp = new EmailMarketingApp();
