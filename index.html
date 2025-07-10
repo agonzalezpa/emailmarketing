@@ -338,6 +338,13 @@
                     <label for="contact-email">Email</label>
                     <input type="email" id="contact-email" name="email" required>
                 </div>
+                <h4>Campos Personalizados</h4>
+                <div id="custom-fields-container">
+                    <!-- Los campos dinámicos se añadirán aquí -->
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" onclick="emailApp.addCustomField()">
+                    <i class="fas fa-plus"></i> Añadir Campo
+                </button>
                 <div class="form-group">
                     <label>Agregar a listas</label>
                     <div id="contact-lists-checkboxes">
@@ -632,7 +639,8 @@
     <div class="toast-container" id="toast-container"></div>
 
     <script src="app.js"></script>
-    <script src="https://cdn.tiny.cloud/1/1wtkzrv4sn4los4hvv5otjzbnu8zbz0izbnzqgssm6e6amkx/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="https://cdn.tiny.cloud/1/1wtkzrv4sn4los4hvv5otjzbnu8zbz0izbnzqgssm6e6amkx/tinymce/7/tinymce.min.js"
+        referrerpolicy="origin"></script>
     <script>
         tinymce.init({
             selector: '#email-editor',
@@ -644,7 +652,7 @@
             language: 'es'
         });
     </script>
-  
+
     <!--<script>
         document.getElementById('btn-conevrtirhtml').addEventListener('click', function () {
             const editor = document.getElementById('email-editor');

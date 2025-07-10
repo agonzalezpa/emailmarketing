@@ -293,7 +293,7 @@ class EmailMarketingApp {
     }
 
 
-    async handleContactSubmit(e) {
+    async handleContactSubmitOLD(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const contact = Object.fromEntries(formData.entries());
@@ -305,7 +305,14 @@ class EmailMarketingApp {
         if (selectedLists.length > 0) {
             contact.list_ids = selectedLists;
         }
-
+        // Recopilar los campos personalizados
+        document.querySelectorAll('.custom-field-group').forEach(group => {
+            const key = group.querySelector('.custom-field-key').value.trim();
+            const value = group.querySelector('.custom-field-value').value.trim();
+            if (key) { // Solo guardar si la clave no está vacía
+                contact.custom_fields[key] = value;
+            }
+        });
         console.log('Contacto a enviar:', contact); // Debe mostrar list_ids si hay listas seleccionadas
 
         try {
@@ -320,6 +327,91 @@ class EmailMarketingApp {
         } catch (error) {
             this.showToast('error', 'Error al crear contacto', error.message);
         }
+    }
+
+    /**
+ * Recopila los datos del formulario, incluyendo los campos personalizados y las listas, y los envía a la API.
+ */
+    async handleContactSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+
+        // Recopilar datos básicos del formulario
+        const formData = new FormData(form);
+        const contactData = Object.fromEntries(formData.entries());
+
+        // Recopilar los campos personalizados dinámicos
+        contactData.custom_fields = {};
+        document.querySelectorAll('#custom-fields-container .custom-field-group').forEach(group => {
+            const keyInput = group.querySelector('.custom-field-key');
+            const valueInput = group.querySelector('.custom-field-value');
+            if (keyInput && valueInput) {
+                const key = keyInput.value.trim();
+                const value = valueInput.value.trim();
+                if (key) { // Solo guardar si la clave no está vacía
+                    contactData.custom_fields[key] = value;
+                }
+            }
+        });
+
+        // Recoger los checkboxes de las listas seleccionadas
+        const selectedLists = Array.from(document.querySelectorAll('#contact-lists-checkboxes input[name="lists"]:checked'))
+            .map(cb => parseInt(cb.value));
+
+        if (selectedLists.length > 0) {
+            contactData.list_ids = selectedLists;
+        }
+
+        console.log('Contacto a enviar:', contactData);
+
+        try {
+            // El método apiRequest debe manejar el envío del objeto completo
+            await this.apiRequest('contacts', 'POST', contactData);
+            this.closeModal('contact-modal');
+            this.showToast('success', 'Contacto guardado', 'El contacto se ha guardado correctamente.');
+
+            // Recargar datos para reflejar los cambios
+            await this.loadContacts();
+            // Si tienes funciones separadas para cargar miembros de listas, llámalas aquí
+            // await this.loadContactListMembersFromAPI(); 
+            this.loadContactLists(); // Para actualizar los contadores de miembros
+            this.updateStats();
+        } catch (error) {
+            this.showToast('error', 'Error al guardar contacto', error.message);
+        }
+    }
+
+    /**
+ * Abre el modal para editar un contacto y puebla los campos, incluyendo los personalizados.
+ */
+    async openEditContactModal(contactId) {
+        // 1. Obtener los datos del contacto desde la API
+        const response = await this.apiRequest(`getContact&id=${contactId}`);
+        const contact = response.data;
+
+        // 2. Poblar los campos básicos
+        document.getElementById('contact-id').value = contact.id; // Asume un input hidden para el ID
+        document.getElementById('contact-name').value = contact.name;
+        document.getElementById('contact-email').value = contact.email;
+
+        // 3. Limpiar y poblar los campos personalizados
+        const container = document.getElementById('custom-fields-container');
+        container.innerHTML = ''; // Limpiar campos anteriores
+
+        if (contact.custom_fields) {
+            // custom_fields llega como una cadena JSON, hay que parsearla
+            try {
+                const customFields = JSON.parse(contact.custom_fields);
+                for (const key in customFields) {
+                    this.addCustomField(key, customFields[key]);
+                }
+            } catch (e) {
+                console.error("Error al parsear custom_fields:", e);
+            }
+        }
+
+        // 4. Abrir el modal
+        this.openModal('contact-modal');
     }
 
     async handleCsvImport(e) {
@@ -501,34 +593,34 @@ class EmailMarketingApp {
         }
     }
 
-  async loadCampaigns() {
-    try {
-        const response = await this.apiRequest('campaigns');
-         // Validación mejorada de la respuesta
-        let campaigns;
-        if (response && response.data && Array.isArray(response.data)) {
-            campaigns = response.data;
-        } else if (response && Array.isArray(response)) {
-            // En caso de que la API devuelva directamente el array
-            campaigns = response;
-        } else {
-            // Si no hay datos válidos, usar array vacío
-            campaigns = [];
-            console.warn('Respuesta de API no tiene formato esperado:', response);
-        }
-        
-        const campaignGrid = document.getElementById('campaigns-grid');
-        
-        if (campaigns.length === 0) {
-            campaignGrid.innerHTML = `
+    async loadCampaigns() {
+        try {
+            const response = await this.apiRequest('campaigns');
+            // Validación mejorada de la respuesta
+            let campaigns;
+            if (response && response.data && Array.isArray(response.data)) {
+                campaigns = response.data;
+            } else if (response && Array.isArray(response)) {
+                // En caso de que la API devuelva directamente el array
+                campaigns = response;
+            } else {
+                // Si no hay datos válidos, usar array vacío
+                campaigns = [];
+                console.warn('Respuesta de API no tiene formato esperado:', response);
+            }
+
+            const campaignGrid = document.getElementById('campaigns-grid');
+
+            if (campaigns.length === 0) {
+                campaignGrid.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-rocket"></i>
                     <p>No hay campañas creadas</p>
                     <button class="btn btn-outline" onclick="emailApp.openCampaignModal()">Crear Primera Campaña</button>
                 </div>
             `;
-        } else {
-            campaignGrid.innerHTML = campaigns.map(campaign => `
+            } else {
+                campaignGrid.innerHTML = campaigns.map(campaign => `
                 <div class="card">
                     <div style="padding: 1.5rem;">
                         <h3>${campaign.name}</h3>
@@ -565,18 +657,18 @@ class EmailMarketingApp {
                     </div>
                 </div>
             `).join('');
-        }
-    } catch (error) {
-        console.error("Error al cargar campañas:", error);
-        document.getElementById('campaigns-grid').innerHTML = `
+            }
+        } catch (error) {
+            console.error("Error al cargar campañas:", error);
+            document.getElementById('campaigns-grid').innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Error al cargar campañas</p>
                 <button class="btn btn-outline" onclick="emailApp.loadCampaigns()">Reintentar</button>
             </div>
         `;
+        }
     }
-}
 
     async loadDashboard() {
         try {
@@ -916,7 +1008,7 @@ class EmailMarketingApp {
             return;
         }
         const htmlContent = tinymce.get('email-editor').getContent();
-         
+
         const testData = {
             sender_id: document.getElementById('campaign-sender').value,
             subject: document.getElementById('campaign-subject').value,
@@ -1659,6 +1751,24 @@ class EmailMarketingApp {
         this.showToast('info', 'Próximamente', 'La función de edición estará disponible pronto.');
     }
 
+}
+/**
+ * Añade un par de campos (clave y valor) para un nuevo campo personalizado.
+ */
+addCustomField(key = '', value = '') {
+    const container = document.getElementById('custom-fields-container');
+    const fieldId = Date.now(); // ID único para agrupar los campos
+
+    const fieldHTML = `
+        <div class="custom-field-group" id="field-group-${fieldId}">
+            <input type="text" class="custom-field-key" placeholder="Nombre del Campo (ej. provincia)" value="${this.escapeHTML(key)}">
+            <input type="text" class="custom-field-value" placeholder="Valor" value="${this.escapeHTML(value)}">
+            <button type="button" class="btn-icon" onclick="document.getElementById('field-group-${fieldId}').remove()">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', fieldHTML);
 }
 
 // Initialize the app
