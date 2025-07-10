@@ -739,8 +739,11 @@ class EmailMarketingAPI
             if (!is_array($listIds)) $listIds = [];
         }
 
-        // Abrir archivo para lectura
-        if (($handle = fopen($file['tmp_name'], 'r')) === false) {
+        // Limpiar archivo CSV antes de procesarlo
+        $cleanedFile = $this->cleanCSVFile($file['tmp_name']);
+
+        // Abrir archivo limpio para lectura
+        if (($handle = fopen($cleanedFile, 'r')) === false) {
             $this->sendError(400, 'No se puede leer el archivo CSV.');
         }
 
@@ -753,17 +756,16 @@ class EmailMarketingAPI
         $header = fgetcsv($handle);
         if (!$header) {
             fclose($handle);
+
+            // Eliminar archivo temporal limpio
+            if (file_exists($cleanedFile)) {
+                unlink($cleanedFile);
+            }
             $this->sendError(400, 'Archivo CSV vacío o formato inválido.');
         }
 
-        // Normalizar encabezados - limpiar comillas dobles anidadas
-        $header = array_map(function ($col) {
-            // Limpiar comillas dobles anidadas y espacios
-            $col = trim($col);
-            $col = str_replace('""', '', $col); // Remover comillas dobles anidadas
-            $col = trim($col, '"'); // Remover comillas externas
-            return strtolower(trim($col));
-        }, $header);
+        // Normalizar encabezados
+        $header = array_map(fn($col) => strtolower(trim($col)), $header);
 
         $emailIndex = array_search('email', $header);
 
@@ -783,9 +785,6 @@ class EmailMarketingAPI
             if (empty(array_filter($row))) continue; // Saltar filas vacías
 
             $email = trim($row[$emailIndex] ?? '');
-            // Limpiar comillas del email también
-            $email = str_replace('""', '', $email);
-            $email = trim($email, '"');
 
             if (!$email) {
                 $errors[] = "Fila $rowNumber: Falta el email.";
@@ -809,10 +808,6 @@ class EmailMarketingAPI
                 // Procesar cada columna del CSV
                 foreach ($header as $index => $columnName) {
                     $value = isset($row[$index]) ? trim($row[$index]) : '';
-
-                    // Limpiar comillas dobles anidadas de los valores también
-                    $value = str_replace('""', '', $value);
-                    $value = trim($value, '"');
 
                     // Saltar si el valor está vacío
                     if ($value === '') continue;
@@ -894,9 +889,9 @@ class EmailMarketingAPI
                     $contactId = $existing['id'];
                 } else {
                     // INSERTAR nuevo contacto
-                    // if (!isset($contactData['status'])) {
-                    $contactData['status'] = 'active';
-                    //}
+                    if (!isset($contactData['status'])) {
+                        $contactData['status'] = 'active';
+                    }
 
                     $insertFields = array_keys($contactData);
                     $insertValues = array_values($contactData);
@@ -947,6 +942,21 @@ class EmailMarketingAPI
             'errors' => $errors,
             'message' => "$imported contactos importados, $updated contactos actualizados correctamente"
         ]);
+    }
+
+    // Función para limpiar archivo CSV eliminando todas las comillas dobles
+    private function cleanCSVFile($filePath)
+    {
+        $content = file_get_contents($filePath);
+
+        // Eliminar todas las comillas dobles
+        $cleanedContent = str_replace('"', '', $content);
+
+        // Crear archivo temporal limpio
+        $tempFile = tempnam(sys_get_temp_dir(), 'cleaned_csv_');
+        file_put_contents($tempFile, $cleanedContent);
+
+        return $tempFile;
     }
 
     // Método auxiliar para mapear estados
