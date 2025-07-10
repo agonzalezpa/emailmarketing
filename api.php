@@ -1193,22 +1193,7 @@ class EmailMarketingAPI
     }
 
 
-    function limpiarAsunto($asunto)
-    {
-        $cadena = "Subject";
-        $longitud = strlen($cadena) + 2;
-        return substr(
-            iconv_mime_encode(
-                $cadena,
-                $asunto,
-                [
-                    "input-charset" => "UTF-8",
-                    "output-charset" => "UTF-8",
-                ]
-            ),
-            $longitud
-        );
-    }
+   
     private function handleSendTest()
     {
         $data = $this->getJsonInput();
