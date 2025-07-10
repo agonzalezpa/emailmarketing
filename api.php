@@ -713,33 +713,50 @@ class EmailMarketingAPI
     }
     private function importContacts()
     {
-        // --- 1. Validación del Archivo ---
         if (!isset($_FILES['csv_file'])) {
             $this->sendError(400, 'Archivo CSV requerido.');
         }
+
         $file = $_FILES['csv_file'];
         if ($file['error'] !== UPLOAD_ERR_OK) {
             $this->sendError(400, 'Error al subir el archivo.');
         }
-        // (Puedes añadir más validaciones de tipo MIME si lo deseas)
 
-        // --- 2. Preparación de Datos ---
+        // Verificar tipo MIME
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        $allowedTypes = ['text/csv', 'text/plain', 'application/vnd.ms-excel'];
+        if (!in_array($mimeType, $allowedTypes)) {
+            $this->sendError(400, 'Tipo de archivo inválido. Sube un archivo CSV.');
+        }
+
+        // Obtener listas seleccionadas
         $listIds = [];
         if (isset($_POST['list_ids'])) {
             $listIds = is_array($_POST['list_ids']) ? $_POST['list_ids'] : json_decode($_POST['list_ids'], true);
             if (!is_array($listIds)) $listIds = [];
         }
 
+        // Abrir archivo para lectura
         if (($handle = fopen($file['tmp_name'], 'r')) === false) {
             $this->sendError(400, 'No se puede leer el archivo CSV.');
         }
 
+        $pdo = $this->getConnection();
+        $imported = 0;
+        $updated = 0;
+        $errors = [];
+
+        // Leer encabezado
         $header = fgetcsv($handle);
         if (!$header) {
             fclose($handle);
             $this->sendError(400, 'Archivo CSV vacío o formato inválido.');
         }
 
+        // Normalizar encabezados
         $header = array_map(fn($col) => strtolower(trim($col)), $header);
         $emailIndex = array_search('email', $header);
 
@@ -748,99 +765,155 @@ class EmailMarketingAPI
             $this->sendError(400, "Falta la columna requerida: email");
         }
 
-        // Identificar las columnas de campos estándar y personalizados
-        $standardFields = ['name', 'email', 'status'];
-        $customFieldHeaders = array_diff($header, $standardFields);
+        // Definir campos estándar de la tabla contacts
+        $standardFields = ['name', 'email', 'status', 'tags'];
 
-        // --- 3. Procesamiento del CSV ---
-        $pdo = $this->getConnection();
-        $imported = 0;
-        $updated = 0;
-        $errors = [];
         $rowNumber = 1;
-        $contactIdsToAssign = [];
+        $newContactIds = [];
 
         while (($row = fgetcsv($handle)) !== false) {
             $rowNumber++;
             if (empty(array_filter($row))) continue; // Saltar filas vacías
 
             $email = trim($row[$emailIndex] ?? '');
+            if (!$email) {
+                $errors[] = "Fila $rowNumber: Falta el email.";
+                continue;
+            }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = "Fila $rowNumber: Email inválido: $email.";
                 continue;
             }
 
-            // Construir el array de datos para este contacto
-            $contactData = [];
-            foreach ($header as $index => $colName) {
-                if (isset($row[$index])) {
-                    $contactData[$colName] = trim($row[$index]);
-                }
-            }
-
-            // Separar campos personalizados
-            $customFieldsData = [];
-            foreach ($customFieldHeaders as $index => $colName) {
-                // Solo añadir el campo si tiene un valor en el CSV
-                if (!empty($contactData[$colName])) {
-                    $customFieldsData[$colName] = $contactData[$colName];
-                }
-            }
-
             try {
-                // Verificar si el contacto ya existe
-                $stmt = $pdo->prepare("SELECT id, custom_fields FROM contacts WHERE email = ?");
+                // Verifica si ya existe el contacto
+                $stmt = $pdo->prepare("SELECT id, status FROM contacts WHERE email = ?");
                 $stmt->execute([$email]);
-                $existingContact = $stmt->fetch(PDO::FETCH_ASSOC);
+                $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($existingContact) {
-                    // --- LÓGICA DE ACTUALIZACIÓN ---
-                    $contactId = $existingContact['id'];
+                // Preparar datos para inserción/actualización
+                $contactData = [];
+                $customFields = [];
 
-                    // Fusionar campos personalizados existentes con los nuevos del CSV
-                    $existingCustomFields = json_decode($existingContact['custom_fields'], true) ?: [];
-                    $mergedCustomFields = array_merge($existingCustomFields, $customFieldsData);
+                // Procesar cada columna del CSV
+                foreach ($header as $index => $columnName) {
+                    $value = trim($row[$index] ?? '');
 
-                    // Preparar la actualización (sin tocar el campo 'status')
-                    $updateStmt = $pdo->prepare(
-                        "UPDATE contacts SET name = ?, custom_fields = ? WHERE id = ?"
-                    );
-                    $updateStmt->execute([
-                        $contactData['name'] ?? 'N/A',
-                        json_encode($mergedCustomFields),
-                        $contactId
-                    ]);
-                    $updated++;
-                    $contactIdsToAssign[] = $contactId;
+                    // Saltar si el valor está vacío
+                    if ($value === '') continue;
+
+                    if (in_array($columnName, $standardFields)) {
+                        // Campo estándar
+                        if ($columnName === 'status') {
+                            $validStatuses = ['active', 'inactive', 'deleted', 'unsubscribed'];
+                            if (in_array(strtolower($value), $validStatuses)) {
+                                // Solo agregar status si es un INSERT (nuevo contacto)
+                                if (!$existing) {
+                                    $contactData[$columnName] = strtolower($value);
+                                }
+                            } else if (!$existing) {
+                                $contactData[$columnName] = 'active';
+                            }
+                        } else if ($columnName === 'tags') {
+                            // Convertir tags a JSON si no lo es ya
+                            if (!empty($value)) {
+                                $tagsArray = is_string($value) ? explode(',', $value) : [$value];
+                                $tagsArray = array_map('trim', $tagsArray);
+                                $contactData[$columnName] = json_encode($tagsArray);
+                            }
+                        } else {
+                            $contactData[$columnName] = $value;
+                        }
+                    } else {
+                        // Campo personalizado
+                        $customFields[$columnName] = $value;
+                    }
+                }
+
+                if ($existing) {
+                    // ACTUALIZAR contacto existente
+                    $updateFields = [];
+                    $updateValues = [];
+
+                    foreach ($contactData as $field => $value) {
+                        if ($field !== 'status') { // No actualizar status
+                            $updateFields[] = "$field = ?";
+                            $updateValues[] = $value;
+                        }
+                    }
+
+                    // Manejar custom_fields
+                    if (!empty($customFields)) {
+                        // Obtener custom_fields existentes
+                        $stmt = $pdo->prepare("SELECT custom_fields FROM contacts WHERE id = ?");
+                        $stmt->execute([$existing['id']]);
+                        $existingCustomFields = $stmt->fetchColumn();
+
+                        $mergedCustomFields = [];
+                        if ($existingCustomFields) {
+                            $mergedCustomFields = json_decode($existingCustomFields, true) ?: [];
+                        }
+
+                        // Fusionar con los nuevos custom_fields
+                        $mergedCustomFields = array_merge($mergedCustomFields, $customFields);
+
+                        $updateFields[] = "custom_fields = ?";
+                        $updateValues[] = json_encode($mergedCustomFields);
+                    }
+
+                    if (!empty($updateFields)) {
+                        $updateValues[] = $existing['id'];
+                        $sql = "UPDATE contacts SET " . implode(', ', $updateFields) . " WHERE id = ?";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute($updateValues);
+                        $updated++;
+                    }
+
+                    $contactId = $existing['id'];
                 } else {
-                    // --- LÓGICA DE INSERCIÓN ---
-                    $insertStmt = $pdo->prepare(
-                        "INSERT INTO contacts (name, email, status, custom_fields) VALUES (?, ?, ?, ?)"
-                    );
-                    $insertStmt->execute([
-                        $contactData['name'] ?? 'N/A',
-                        $email,
-                        $contactData['status'] ?? 'active',
-                        json_encode($customFieldsData)
-                    ]);
+                    // INSERTAR nuevo contacto
+                    if (!isset($contactData['status'])) {
+                        $contactData['status'] = 'active';
+                    }
+
+                    $insertFields = array_keys($contactData);
+                    $insertValues = array_values($contactData);
+
+                    // Agregar custom_fields si existen
+                    if (!empty($customFields)) {
+                        $insertFields[] = 'custom_fields';
+                        $insertValues[] = json_encode($customFields);
+                    }
+
+                    $placeholders = str_repeat('?,', count($insertFields) - 1) . '?';
+                    $sql = "INSERT INTO contacts (" . implode(', ', $insertFields) . ") VALUES ($placeholders)";
+
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($insertValues);
                     $contactId = $pdo->lastInsertId();
                     $imported++;
-                    $contactIdsToAssign[] = $contactId;
+                    $newContactIds[] = $contactId;
                 }
             } catch (Exception $e) {
                 $errors[] = "Fila $rowNumber: Error al procesar $email: " . $e->getMessage();
             }
         }
+
         fclose($handle);
 
-        // --- 4. Asignar a Listas ---
-        if (!empty($listIds) && !empty($contactIdsToAssign)) {
+        // Asignar SOLO los contactos NUEVOS a listas seleccionadas
+        if (!empty($listIds) && !empty($newContactIds)) {
             $stmtList = $pdo->prepare("INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
             foreach ($listIds as $listId) {
-                foreach ($contactIdsToAssign as $contactId) {
-                    try {
-                        $stmtList->execute([$listId, $contactId]);
-                    } catch (Exception $e) { /* Ignorar errores de duplicado */
+                $stmtCheck = $pdo->prepare("SELECT id FROM contact_lists WHERE id = ?");
+                $stmtCheck->execute([$listId]);
+                if ($stmtCheck->fetch()) {
+                    foreach ($newContactIds as $contactId) {
+                        try {
+                            $stmtList->execute([$listId, $contactId]);
+                        } catch (Exception $e) {
+                            // Ignorar errores de duplicado
+                        }
                     }
                 }
             }
@@ -850,7 +923,7 @@ class EmailMarketingAPI
             'imported' => $imported,
             'updated' => $updated,
             'errors' => $errors,
-            'message' => "$imported contactos nuevos importados, $updated actualizados."
+            'message' => "$imported contactos importados, $updated contactos actualizados correctamente"
         ]);
     }
 
