@@ -583,7 +583,7 @@ class EmailMarketingAPI
      * Importar contactos desde un csv
      * @return void
      */
-    private function importContacts()
+    private function importContactsOLD()
     {
         if (!isset($_FILES['csv_file'])) {
             $this->sendError(400, 'Archivo CSV requerido.');
@@ -711,97 +711,148 @@ class EmailMarketingAPI
             'message' => "$imported contactos importados correctamente"
         ]);
     }
-
-    private function handleImportExcel()
+    private function importContacts()
     {
-        if (!isset($_FILES['excel_file'])) {
-            $this->sendError(400, 'Excel file is required');
+        // --- 1. Validación del Archivo ---
+        if (!isset($_FILES['csv_file'])) {
+            $this->sendError(400, 'Archivo CSV requerido.');
         }
-
-        $file = $_FILES['excel_file'];
+        $file = $_FILES['csv_file'];
         if ($file['error'] !== UPLOAD_ERR_OK) {
-            $this->sendError(400, 'File upload error');
+            $this->sendError(400, 'Error al subir el archivo.');
+        }
+        // (Puedes añadir más validaciones de tipo MIME si lo deseas)
+
+        // --- 2. Preparación de Datos ---
+        $listIds = [];
+        if (isset($_POST['list_ids'])) {
+            $listIds = is_array($_POST['list_ids']) ? $_POST['list_ids'] : json_decode($_POST['list_ids'], true);
+            if (!is_array($listIds)) $listIds = [];
         }
 
-        $allowedTypes = [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel'
-        ];
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
-
-        if (!in_array($mimeType, $allowedTypes)) {
-            $this->sendError(400, "Invalid file type: $mimeType. Must be .xls or .xlsx");
+        if (($handle = fopen($file['tmp_name'], 'r')) === false) {
+            $this->sendError(400, 'No se puede leer el archivo CSV.');
         }
 
-        try {
-            $spreadsheet = IOFactory::load($file['tmp_name']);
-            $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray();
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            $this->sendError(400, 'Archivo CSV vacío o formato inválido.');
+        }
 
-            $header = array_map('strtolower', array_map('trim', $rows[0]));
-            $required = ['name', 'email'];
-            foreach ($required as $col) {
-                if (!in_array($col, $header)) {
-                    $this->sendError(400, "Missing required column: $col");
+        $header = array_map(fn($col) => strtolower(trim($col)), $header);
+        $emailIndex = array_search('email', $header);
+
+        if ($emailIndex === false) {
+            fclose($handle);
+            $this->sendError(400, "Falta la columna requerida: email");
+        }
+
+        // Identificar las columnas de campos estándar y personalizados
+        $standardFields = ['name', 'email'];
+        $customFieldHeaders = array_diff($header, $standardFields);
+
+        // --- 3. Procesamiento del CSV ---
+        $pdo = $this->getConnection();
+        $imported = 0;
+        $updated = 0;
+        $errors = [];
+        $rowNumber = 1;
+        $contactIdsToAssign = [];
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $rowNumber++;
+            if (empty(array_filter($row))) continue; // Saltar filas vacías
+
+            $email = trim($row[$emailIndex] ?? '');
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Fila $rowNumber: Email inválido: $email.";
+                continue;
+            }
+
+            // Construir el array de datos para este contacto
+            $contactData = [];
+            foreach ($header as $index => $colName) {
+                if (isset($row[$index])) {
+                    $contactData[$colName] = trim($row[$index]);
                 }
             }
 
-            $pdo = $this->getConnection();
-            $imported = 0;
-            $errors = [];
-
-            $nameIndex   = array_search('name', $header);
-            $emailIndex  = array_search('email', $header);
-            $statusIndex = array_search('status', $header);
-
-            for ($i = 1; $i < count($rows); $i++) {
-                $row = $rows[$i];
-
-                $name = trim($row[$nameIndex] ?? '');
-                $email = trim($row[$emailIndex] ?? '');
-                $status = $statusIndex !== false ? strtolower(trim($row[$statusIndex] ?? 'active')) : 'active';
-
-                if (!$name) {
-                    $errors[] = "Row $i: Name is required";
-                    continue;
+            // Separar campos personalizados
+            $customFieldsData = [];
+            foreach ($customFieldHeaders as $index => $colName) {
+                if (!empty($contactData[$colName])) {
+                    $customFieldsData[$colName] = $contactData[$colName];
                 }
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $errors[] = "Row $i: Invalid email format: $email";
-                    continue;
-                }
+            }
 
-                $validStatuses = ['active', 'inactive', 'bounced', 'unsubscribed'];
-                if (!in_array($status, $validStatuses)) {
-                    $status = 'active';
-                }
+            try {
+                // Verificar si el contacto ya existe
+                $stmt = $pdo->prepare("SELECT id, custom_fields FROM contacts WHERE email = ?");
+                $stmt->execute([$email]);
+                $existingContact = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                try {
-                    $stmt = $pdo->prepare("SELECT id FROM contacts WHERE email = ?");
-                    $stmt->execute([$email]);
-                    if ($stmt->fetch()) {
-                        $errors[] = "Row $i: Email already exists: $email";
-                        continue;
-                    }
+                if ($existingContact) {
+                    // --- LÓGICA DE ACTUALIZACIÓN ---
+                    $contactId = $existingContact['id'];
 
-                    $stmt = $pdo->prepare("INSERT INTO contacts (name, email, status) VALUES (?, ?, ?)");
-                    $stmt->execute([$name, $email, $status]);
+                    // Fusionar campos personalizados existentes con los nuevos
+                    $existingCustomFields = json_decode($existingContact['custom_fields'], true) ?: [];
+                    $mergedCustomFields = array_merge($existingCustomFields, $customFieldsData);
+
+                    // Preparar la actualización (sin tocar el status)
+                    $updateStmt = $pdo->prepare(
+                        "UPDATE contacts SET name = ?, custom_fields = ? WHERE id = ?"
+                    );
+                    $updateStmt->execute([
+                        $contactData['name'] ?? '',
+                        json_encode($mergedCustomFields),
+                        $contactId
+                    ]);
+                    $updated++;
+                    $contactIdsToAssign[] = $contactId;
+                } else {
+                    // --- LÓGICA DE INSERCIÓN ---
+                    $insertStmt = $pdo->prepare(
+                        "INSERT INTO contacts (name, email, status, custom_fields) VALUES (?, ?, ?, ?)"
+                    );
+                    $insertStmt->execute([
+                        $contactData['name'] ?? '',
+                        $email,
+                        $contactData['status'] ?? 'active',
+                        json_encode($customFieldsData)
+                    ]);
+                    $contactId = $pdo->lastInsertId();
                     $imported++;
-                } catch (Exception $e) {
-                    $errors[] = "Row $i: Error with $email: " . $e->getMessage();
+                    $contactIdsToAssign[] = $contactId;
+                }
+            } catch (Exception $e) {
+                $errors[] = "Fila $rowNumber: Error al procesar $email: " . $e->getMessage();
+            }
+        }
+        fclose($handle);
+
+        // --- 4. Asignar a Listas ---
+        if (!empty($listIds) && !empty($contactIdsToAssign)) {
+            $stmtList = $pdo->prepare("INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+            foreach ($listIds as $listId) {
+                foreach ($contactIdsToAssign as $contactId) {
+                    try {
+                        $stmtList->execute([$listId, $contactId]);
+                    } catch (Exception $e) { /* Ignorar errores de duplicado */
+                    }
                 }
             }
-
-            $this->sendResponse([
-                'imported' => $imported,
-                'errors' => $errors,
-                'message' => "$imported contacts imported successfully from Excel"
-            ]);
-        } catch (Exception $e) {
-            $this->sendError(500, 'Failed to read Excel file: ' . $e->getMessage());
         }
+
+        $this->sendResponse([
+            'imported' => $imported,
+            'updated' => $updated,
+            'errors' => $errors,
+            'message' => "$imported contactos nuevos importados, $updated actualizados."
+        ]);
     }
+   
 
     // Métodos para gestionar listas de contactos
     private function handleContactLists($method, $id)
@@ -1060,7 +1111,7 @@ class EmailMarketingAPI
         foreach ($campaigns as &$campaign) {
             // Calcular el total de intentos reales: sent + bounced + failed
             $campaign['total_attempts'] = $campaign['total_sent'] + $campaign['total_bounced'] + $campaign['total_failed'];
-            $campaign['total_attempts_2'] = $campaign['total_sent'] + $campaign['total_bounced'] ;
+            $campaign['total_attempts_2'] = $campaign['total_sent'] + $campaign['total_bounced'];
 
             // Tasas basadas en correos enviados exitosamente (para apertura y clic)
             if ($campaign['total_sent'] > 0) {
@@ -1193,7 +1244,7 @@ class EmailMarketingAPI
     }
 
 
-   
+
     private function handleSendTest()
     {
         $data = $this->getJsonInput();
