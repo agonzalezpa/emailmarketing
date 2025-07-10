@@ -756,8 +756,15 @@ class EmailMarketingAPI
             $this->sendError(400, 'Archivo CSV vacío o formato inválido.');
         }
 
-        // Normalizar encabezados
-        $header = array_map(fn($col) => strtolower(trim($col)), $header);
+        // Normalizar encabezados - limpiar comillas dobles anidadas
+        $header = array_map(function ($col) {
+            // Limpiar comillas dobles anidadas y espacios
+            $col = trim($col);
+            $col = str_replace('""', '', $col); // Remover comillas dobles anidadas
+            $col = trim($col, '"'); // Remover comillas externas
+            return strtolower(trim($col));
+        }, $header);
+
         $emailIndex = array_search('email', $header);
 
         if ($emailIndex === false) {
@@ -766,7 +773,7 @@ class EmailMarketingAPI
         }
 
         // Definir campos estándar de la tabla contacts
-        $standardFields = ['name', 'email', 'status', 'tags'];
+        $standardFields = ['name', 'email', 'status', 'tags', 'telefono', 'dni / ruc', 'departamento', 'provincia', 'distrito', 'genero', 'fecha nacimiento'];
 
         $rowNumber = 1;
         $newContactIds = [];
@@ -776,6 +783,10 @@ class EmailMarketingAPI
             if (empty(array_filter($row))) continue; // Saltar filas vacías
 
             $email = trim($row[$emailIndex] ?? '');
+            // Limpiar comillas del email también
+            $email = str_replace('""', '', $email);
+            $email = trim($email, '"');
+
             if (!$email) {
                 $errors[] = "Fila $rowNumber: Falta el email.";
                 continue;
@@ -797,22 +808,27 @@ class EmailMarketingAPI
 
                 // Procesar cada columna del CSV
                 foreach ($header as $index => $columnName) {
-                    $value = trim($row[$index] ?? '');
+                    $value = isset($row[$index]) ? trim($row[$index]) : '';
+
+                    // Limpiar comillas dobles anidadas de los valores también
+                    $value = str_replace('""', '', $value);
+                    $value = trim($value, '"');
 
                     // Saltar si el valor está vacío
                     if ($value === '') continue;
 
                     if (in_array($columnName, $standardFields)) {
                         // Campo estándar
-                        if ($columnName === 'status') {
+                        if ($columnName === 'status' || $columnName === 'estado') {
                             $validStatuses = ['active', 'inactive', 'deleted', 'unsubscribed'];
-                            if (in_array(strtolower($value), $validStatuses)) {
+                            $mappedStatus = $this->mapStatus($value); // Mapear "Activo" a "active"
+                            if (in_array($mappedStatus, $validStatuses)) {
                                 // Solo agregar status si es un INSERT (nuevo contacto)
                                 if (!$existing) {
-                                    $contactData[$columnName] = strtolower($value);
+                                    $contactData['status'] = $mappedStatus;
                                 }
                             } else if (!$existing) {
-                                $contactData[$columnName] = 'active';
+                                $contactData['status'] = 'active';
                             }
                         } else if ($columnName === 'tags') {
                             // Convertir tags a JSON si no lo es ya
@@ -822,7 +838,13 @@ class EmailMarketingAPI
                                 $contactData[$columnName] = json_encode($tagsArray);
                             }
                         } else {
-                            $contactData[$columnName] = $value;
+                            // Solo almacenar campos que existen en la tabla contacts
+                            if (in_array($columnName, ['name', 'email'])) {
+                                $contactData[$columnName] = $value;
+                            } else {
+                                // Otros campos van a custom_fields
+                                $customFields[$columnName] = $value;
+                            }
                         }
                     } else {
                         // Campo personalizado
@@ -872,9 +894,9 @@ class EmailMarketingAPI
                     $contactId = $existing['id'];
                 } else {
                     // INSERTAR nuevo contacto
-                    if (!isset($contactData['status'])) {
-                        $contactData['status'] = 'active';
-                    }
+                    // if (!isset($contactData['status'])) {
+                    $contactData['status'] = 'active';
+                    //}
 
                     $insertFields = array_keys($contactData);
                     $insertValues = array_values($contactData);
@@ -925,6 +947,20 @@ class EmailMarketingAPI
             'errors' => $errors,
             'message' => "$imported contactos importados, $updated contactos actualizados correctamente"
         ]);
+    }
+
+    // Método auxiliar para mapear estados
+    private function mapStatus($status)
+    {
+        $statusMap = [
+            'activo' => 'active',
+            'inactivo' => 'inactive',
+            'eliminado' => 'deleted',
+            'desuscrito' => 'unsubscribed'
+        ];
+
+        $status = strtolower(trim($status));
+        return isset($statusMap[$status]) ? $statusMap[$status] : 'active';
     }
 
 
