@@ -172,7 +172,7 @@ try {
         JOIN contacts c ON cr.contact_id = c.id
         JOIN campaigns cmp ON cr.campaign_id = cmp.id
         WHERE cr.campaign_id = ?
-          AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
+          AND (cr.status = 'pending' OR  cr.retry_count < 3)
         ORDER BY cr.id ASC
         LIMIT ?
     ");
