@@ -749,7 +749,7 @@ class EmailMarketingAPI
         }
 
         // Identificar las columnas de campos estándar y personalizados
-        $standardFields = ['name', 'email'];
+        $standardFields = ['name', 'email', 'status'];
         $customFieldHeaders = array_diff($header, $standardFields);
 
         // --- 3. Procesamiento del CSV ---
@@ -781,6 +781,7 @@ class EmailMarketingAPI
             // Separar campos personalizados
             $customFieldsData = [];
             foreach ($customFieldHeaders as $index => $colName) {
+                // Solo añadir el campo si tiene un valor en el CSV
                 if (!empty($contactData[$colName])) {
                     $customFieldsData[$colName] = $contactData[$colName];
                 }
@@ -796,16 +797,16 @@ class EmailMarketingAPI
                     // --- LÓGICA DE ACTUALIZACIÓN ---
                     $contactId = $existingContact['id'];
 
-                    // Fusionar campos personalizados existentes con los nuevos
+                    // Fusionar campos personalizados existentes con los nuevos del CSV
                     $existingCustomFields = json_decode($existingContact['custom_fields'], true) ?: [];
                     $mergedCustomFields = array_merge($existingCustomFields, $customFieldsData);
 
-                    // Preparar la actualización (sin tocar el status)
+                    // Preparar la actualización (sin tocar el campo 'status')
                     $updateStmt = $pdo->prepare(
                         "UPDATE contacts SET name = ?, custom_fields = ? WHERE id = ?"
                     );
                     $updateStmt->execute([
-                        $contactData['name'] ?? '',
+                        $contactData['name'] ?? 'N/A',
                         json_encode($mergedCustomFields),
                         $contactId
                     ]);
@@ -817,7 +818,7 @@ class EmailMarketingAPI
                         "INSERT INTO contacts (name, email, status, custom_fields) VALUES (?, ?, ?, ?)"
                     );
                     $insertStmt->execute([
-                        $contactData['name'] ?? '',
+                        $contactData['name'] ?? 'N/A',
                         $email,
                         $contactData['status'] ?? 'active',
                         json_encode($customFieldsData)
@@ -852,7 +853,7 @@ class EmailMarketingAPI
             'message' => "$imported contactos nuevos importados, $updated actualizados."
         ]);
     }
-   
+
 
     // Métodos para gestionar listas de contactos
     private function handleContactLists($method, $id)
