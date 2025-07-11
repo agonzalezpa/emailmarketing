@@ -949,12 +949,12 @@ class EmailMarketingAPI
     {
         $content = file_get_contents($filePath);
 
-        // Eliminar todas las comillas dobles
+        // Eliminar todas las comillas dobles y los slashes/ los cambia por guiones
         $cleanedContent = str_replace('"', '', $content);
-
+        $cleanedContent2 = str_replace('/', '-', $cleanedContent);
         // Crear archivo temporal limpio
         $tempFile = tempnam(sys_get_temp_dir(), 'cleaned_csv_');
-        file_put_contents($tempFile, $cleanedContent);
+        file_put_contents($tempFile, $cleanedContent2);
 
         return $tempFile;
     }
