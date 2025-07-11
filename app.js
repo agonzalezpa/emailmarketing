@@ -1722,7 +1722,7 @@ class EmailMarketingApp {
     async pauseCampaign(campaignId) {
         if (!confirm('¿Estás seguro de que quieres pausar esta campaña?')) return;
         try {
-            await this.apiRequest(`campaigns?pauseCampaign${campaignId}`, 'POST');
+            await this.apiRequest(`campaigns/${campaignId}?action=pauseCampaign`, 'POST');
             this.showToast('success', 'Campaña Pausada', 'El envío se ha detenido.');
             this.loadCampaigns(); // Recargar la vista para mostrar el nuevo estado
         } catch (error) {
@@ -1733,7 +1733,7 @@ class EmailMarketingApp {
     async resumeCampaign(campaignId) {
         if (!confirm('¿Estás seguro de que quieres reanudar esta campaña?')) return;
         try {
-            await this.apiRequest(`campaigns/${campaignId}`, 'resumeCampaign');
+            await this.apiRequest(`campaigns/${campaignId}?action=resumeCampaign`, 'POST');
             this.showToast('success', 'Campaña Reanudada', 'El envío continuará pronto.');
             this.loadCampaigns();
         } catch (error) {
@@ -1744,7 +1744,7 @@ class EmailMarketingApp {
     async cancelCampaign(campaignId) {
         if (!confirm('¿Estás seguro de que quieres cancelar esta campaña? Esta acción no se puede deshacer.')) return;
         try {
-            await this.apiRequest(`campaigns/${campaignId}`, 'cancelCampaign');
+            await this.apiRequest(`campaigns/${campaignId}?action=cancelCampaign`, 'POST');
             this.showToast('success', 'Campaña Cancelada', 'El envío se ha cancelado permanentemente.');
             this.loadCampaigns();
         } catch (error) {

@@ -233,24 +233,13 @@ class EmailMarketingAPI
     }
 
     private function handleCampaigns($method, $id)
-    {
-        switch ($method) {
-            case 'GET':
-                if ($id) {
-                    $this->getCampaign($id);
-                } else {
-                    $this->getCampaigns();
-                }
-                break;
-            case 'POST':
-                $this->createCampaign();
-                break;
-            case 'PUT':
-                $this->updateCampaign($id);
-                break;
-            case 'DELETE':
-              //  $this->deleteCampaign($id);
-                break;
+{
+    // Verificar si hay un parámetro action en la URL
+    $action = $_GET['action'] ?? null;
+    
+    if ($action) {
+        // Manejar acciones específicas
+        switch ($action) {
             case 'pauseCampaign':
                 $this->pauseCampaign($id);
                 break;
@@ -261,9 +250,33 @@ class EmailMarketingAPI
                 $this->cancelCampaign($id);
                 break;
             default:
-                $this->sendError(405, 'Method not allowed');
+                $this->sendError(400, 'Invalid action');
         }
+        return;
     }
+    
+    // Manejar métodos HTTP estándar
+    switch ($method) {
+        case 'GET':
+            if ($id) {
+                $this->getCampaign($id);
+            } else {
+                $this->getCampaigns();
+            }
+            break;
+        case 'POST':
+            $this->createCampaign();
+            break;
+        case 'PUT':
+            $this->updateCampaign($id);
+            break;
+        case 'DELETE':
+            //  $this->deleteCampaign($id);
+            break;
+        default:
+            $this->sendError(405, 'Method not allowed');
+    }
+}
 
     private function handleTemplates($method, $id)
     {
