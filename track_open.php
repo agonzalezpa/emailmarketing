@@ -1,5 +1,5 @@
 <?php
-// --- MODO DE DEPURACIÓN (Desactivado por defecto) ---
+// --- MODO DE DEPURACIÓN (Activar solo para debug) ---
 // ini_set('display_errors', 1);
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
@@ -10,101 +10,145 @@ define('DB_NAME', 'u750684196_email_marketin');
 define('DB_USER', 'u750684196_info');
 define('DB_PASS', 'Olivera19%');
 
-// --- LÓGICA DE SEGUIMIENTO DE APERTURAS ---
+// --- LÓGICA DE SEGUIMIENTO DE APERTURAS MEJORADA ---
 
 // 1. Obtener datos de la petición
 $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
+$referer = $_SERVER['HTTP_REFERER'] ?? '';
 
-// 2. Lista negra de firmas y patrones de bots/proxies
-$specific_signatures = [
-    'GoogleImageProxy',
-    'YahooMailProxy',
-    'Microsoft Office',
-    'Outlook-iOS',
-    'Outlook-Android',
-    'FeedFetcher-Google',
-    'Gmail-content-sampling'
+// 2. Lista de bots REALES que debemos filtrar (más conservadora)
+$definite_bots = [
+    'GoogleImageProxy',           // Proxy de imágenes de Gmail
+    'YahooMailProxy',            // Proxy de Yahoo
+    'FeedFetcher-Google',        // Bot de Google para feeds
+    'Gmail-content-scanning',     // Scanner de contenido de Gmail
+    'ProtonMail-image-proxy',    // Proxy de ProtonMail
+    'Thunderbird/0.0.0.0',      // Algunos scrapers usan esta firma
 ];
 
+// 3. Patrones de bots más específicos
 $bot_patterns = [
-    '/Apple Mail/i',
-    '/HeadlessChrome/i',
-    '/\b(AhrefsBot|SemrushBot|Bytespider|bingbot|msnbot|bot|spider|crawler|preview|scanner)\b/i'
+    '/HeadlessChrome/i',                    // Chrome sin interfaz
+    '/PhantomJS/i',                         // PhantomJS
+    '/\bbot\b/i',                          // Palabra "bot"
+    '/\bspider\b/i',                       // Palabra "spider"
+    '/\bcrawler\b/i',                      // Palabra "crawler"
+    '/\bscanner\b/i',                      // Palabra "scanner"
+    '/AhrefsBot|SemrushBot|Bytespider|bingbot|msnbot/i',  // Bots específicos
+    '/WhatsApp\/[\d\.]+\s*$/i',            // WhatsApp preview (muy básico)
+    '/Slackbot/i',                         // Slack preview
+    '/facebookexternalhit/i',              // Facebook preview
+    '/LinkedInBot/i',                      // LinkedIn preview
+    '/Twitterbot/i',                       // Twitter preview
 ];
 
-// 3. Verificar si el User-Agent o la IP indican que es un bot
-$is_bot = false;
-
-// Si el User-Agent está vacío o es demasiado genérico, es un bot.
-if (empty($user_agent) || $user_agent === 'Mozilla/5.0') {
-    $is_bot = true;
-}
-
-// Comprobar firmas específicas
-if (!$is_bot) {
-    foreach ($specific_signatures as $signature) {
-        if (stripos($user_agent, $signature) !== false) {
-            $is_bot = true;
-            break;
+// 4. Función para verificar si es un bot
+function isBot($user_agent, $ip_address) {
+    global $definite_bots, $bot_patterns;
+    
+    // Si no hay User-Agent, es muy sospechoso
+    if (empty($user_agent)) {
+        return true;
+    }
+    
+    // User-Agent demasiado corto o genérico
+    if (strlen($user_agent) < 10 || $user_agent === 'Mozilla/5.0') {
+        return true;
+    }
+    
+    // Verificar bots definidos
+    foreach ($definite_bots as $bot) {
+        if (stripos($user_agent, $bot) !== false) {
+            return true;
         }
     }
-}
-
-// Comprobar patrones de regex
-if (!$is_bot) {
+    
+    // Verificar patrones de bots
     foreach ($bot_patterns as $pattern) {
         if (preg_match($pattern, $user_agent)) {
-            $is_bot = true;
-            break;
+            return true;
         }
     }
-}
-
-// Comprobación adicional: si la IP es de un rango conocido de Google y el User-Agent es sospechoso
-if (!$is_bot && $ip_address) {
-    // Rangos de IP comunes de Google. Esto se puede ampliar.
-    $google_ip_ranges = ['66.249.', '66.102.', '72.14.', '74.125.', '173.194.', '209.85.'];
-    foreach ($google_ip_ranges as $range) {
-        if (strpos($ip_address, $range) === 0) {
-            // Si la IP es de Google y el User-Agent es el genérico de Chrome/Edge que vimos, lo marcamos como bot.
-            if (strpos($user_agent, 'Chrome/42.0.2311.135') !== false) {
-                $is_bot = true;
-                break;
-            }
-        }
-    }
-}
-
-
-// 4. Solo registrar la apertura si NO es un bot y si tenemos los parámetros correctos
-if (!$is_bot && !empty($_GET['campaign_id']) && !empty($_GET['contact_id'])) {
     
-    $campaign_id = (int)$_GET['campaign_id'];
-    $contact_id = (int)$_GET['contact_id'];
+    return false;
+}
 
-    if ($campaign_id > 0 && $contact_id > 0) {
+// 5. Función para verificar si es una apertura duplicada reciente
+function isDuplicateRecent($pdo, $campaign_id, $contact_id, $ip_address) {
+    try {
+        // Buscar aperturas de la misma campaña y contacto en los últimos 30 minutos
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM email_events 
+             WHERE campaign_id = ? AND contact_id = ? AND event_type = 'opened' 
+             AND ip_address = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)"
+        );
+        $stmt->execute([$campaign_id, $contact_id, $ip_address]);
+        
+        return $stmt->fetchColumn() > 0;
+    } catch (Exception $e) {
+        return false; // En caso de error, permitir el registro
+    }
+}
+
+// 6. Función para log de debug (opcional)
+function logDebug($message) {
+    if (defined('DEBUG_MODE') && DEBUG_MODE) {
+        $timestamp = date('Y-m-d H:i:s');
+        $log_message = "[$timestamp] $message\n";
+        file_put_contents(__DIR__ . '/debug_tracking.log', $log_message, FILE_APPEND);
+    }
+}
+
+// 7. LÓGICA PRINCIPAL DE TRACKING
+$campaign_id = isset($_GET['campaign_id']) ? (int)$_GET['campaign_id'] : 0;
+$contact_id = isset($_GET['contact_id']) ? (int)$_GET['contact_id'] : 0;
+
+// Verificar que tenemos los parámetros necesarios
+if ($campaign_id > 0 && $contact_id > 0) {
+    
+    // Verificar si es un bot
+    $is_bot = isBot($user_agent, $ip_address);
+    
+    // Log de debug (descomenta para activar)
+    // define('DEBUG_MODE', true);
+    // logDebug("UA: $user_agent | IP: $ip_address | Bot: " . ($is_bot ? 'YES' : 'NO'));
+    
+    if (!$is_bot) {
         try {
             $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
-            // Preparamos la inserción en tu tabla email_events
-            $stmt = $pdo->prepare(
-                "INSERT INTO email_events (campaign_id, contact_id, event_type, ip_address, user_agent) 
-                 VALUES (?, ?, 'opened', ?, ?)"
-            );
-            $stmt->execute([$campaign_id, $contact_id, $ip_address, $user_agent]);
-
+            // Verificar si no es una apertura duplicada reciente
+            if (!isDuplicateRecent($pdo, $campaign_id, $contact_id, $ip_address)) {
+                
+                // Registrar la apertura
+                $stmt = $pdo->prepare(
+                    "INSERT INTO email_events (campaign_id, contact_id, event_type, ip_address, user_agent, created_at) 
+                     VALUES (?, ?, 'opened', ?, ?, NOW())"
+                );
+                $stmt->execute([$campaign_id, $contact_id, $ip_address, $user_agent]);
+                
+                // Log de éxito (opcional)
+                // logDebug("APERTURA REGISTRADA - Campaign: $campaign_id, Contact: $contact_id");
+            }
+            
         } catch (PDOException $e) {
-            // Si hay un error de base de datos, lo registramos
-            $errorMessage = "ERROR DE APERTURA: " . $e->getMessage();
-            file_put_contents(__DIR__ . '/error_log', $errorMessage . "\n", FILE_APPEND);
+            // Registrar error
+            $errorMessage = date('Y-m-d H:i:s') . " - ERROR DE APERTURA: " . $e->getMessage();
+            file_put_contents(__DIR__ . '/error_tracking.log', $errorMessage . "\n", FILE_APPEND);
         }
     }
 }
 
 // --- RESPUESTA FINAL ---
-// Siempre servimos la imagen de 1x1 píxel.
+// Siempre servir la imagen de 1x1 píxel transparente
 header('Content-Type: image/gif');
-echo base64_decode('R0lGODlhAQABAJAAAP8AAAAAACH5BAUQAAAALAAAAAABAAEAAAICRAEAOw==');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+// Imagen GIF transparente de 1x1 píxel
+echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
 exit;
+?>

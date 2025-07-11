@@ -48,8 +48,8 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $id_recip
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = 465;
 
-       // $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
-       // $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+        // $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+        // $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
 
         $mail->CharSet = 'UTF-8';
         $mail->addCustomHeader('X-Campaign-Recipient-ID', $id_recipient);
@@ -221,10 +221,13 @@ LIMIT ?
                 }
 
 
-               // $attachmentPath = __DIR__ . '/precios_base.pdf';
-                $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
-                $finalHtmlContent = $personalizedHtml . $trackingPixel;
+                // $attachmentPath = __DIR__ . '/precios_base.pdf';
+                //$trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
+               // $finalHtmlContent = $personalizedHtml . $trackingPixel;
 
+                $timestamp = time();
+                $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '?t=' . $timestamp . '" width="1" height="1" style="display:none;"/>';
+                $finalHtmlContent = $personalizedHtml . $trackingPixel;
                 $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $personalizedSubject, $finalHtmlContent, $recipient['id'], file_exists($attachmentPath) ? $attachmentPath : null);
 
                 if ($emailSent['success']) {
