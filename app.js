@@ -734,24 +734,37 @@ class EmailMarketingApp {
                 // --- Se mantiene tu estructura HTML y se añade el div de acciones ---
                 return `
                     <div class="card">
-                        <div class="card-content">
-                            <h3>${campaign.name}</h3>
-                            <p><strong>Asunto:</strong> ${campaign.subject}</p>
-                            <p><strong>Remitente:</strong> ${campaign.sender_name || 'N/A'}</p>
+                       <div style="padding: 1.5rem;">
+                        <h3>${campaign.name}</h3>
+                        <p><strong>Asunto:</strong> ${campaign.subject}</p>
+                        <p><strong>Remitente:</strong> ${campaign.sender_name || 'N/A'}</p>
+                        
+                        <!-- ESTADÍSTICAS DE ENVÍO MEJORADAS -->
+                        <p><strong>Intentos de Envío:</strong> ${campaign.total_attempts || 0} de ${campaign.total_recipients || 0} destinatarios</p>
+                        <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>                        
+                        <p><strong>Estado:</strong> ${campaign.status}</p>
+                        <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+                            <div>
+                                <strong>${campaign.open_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Apertura (${campaign.total_opened || 0})</small>
+                            </div>
+                            <div>
+                                <strong>${campaign.click_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Clicks (${campaign.total_clicked || 0})</small>
+                            </div>
                             
-                            <p><strong>Intentos de Envío:</strong> ${campaign.total_attempts || 0} de ${campaign.total_recipients || 0} destinatarios</p>
-                            <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>
-                            
-                            <p><strong>Estado:</strong> <span class="status-badge status-${campaign.status}">${campaign.status}</span></p>
-                            <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
-                            
-                            <div class="stats-row">
-                                <div><strong>${campaign.open_rate || 0}%</strong><small>Apertura (${campaign.total_opened || 0})</small></div>
-                                <div><strong>${campaign.click_rate || 0}%</strong><small>Clicks (${campaign.total_clicked || 0})</small></div>
-                                <div><strong>${campaign.bounce_rate || 0}%</strong><small>Rebotados (${campaign.total_bounced || 0})</small></div>
-                                <div><strong>${campaign.failure_rate || 0}%</strong><small>Fallidos (${campaign.total_failed || 0})</small></div>
+                            <!-- NUEVAS ESTADÍSTICAS AÑADIDAS -->
+                            <div>
+                                <strong>${campaign.bounce_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Rebotados (${campaign.total_bounced || 0})</small>
+                            </div>
+                            <div>
+                                <strong>${campaign.failure_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Fallidos (${campaign.total_failed || 0})</small>
                             </div>
                         </div>
+                    </div>
                         <div class="card-actions">
                             ${actionButtons}
                         </div>
