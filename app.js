@@ -721,13 +721,15 @@ class EmailMarketingApp {
                     let actionButtons = '';
                     if (campaign.status === 'sending') {
                         actionButtons = `
-                        <button class="btn btn-sm btn-warning" onclick="emailApp.pauseCampaign(${campaign.id})"><i class="fas fa-pause"></i> Pausar</button>
-                        <button class="btn btn-sm btn-danger" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
+                        <button class="btn btn-sm btn-warning"  style="padding: 1.5rem;" onclick="emailApp.pauseCampaign(${campaign.id})"><i class="fas fa-pause"></i> Pausar</button>
+                        <button class="btn btn-sm btn-danger"  style="padding: 1.5rem;" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
+                        <br>
                     `;
                     } else if (campaign.status === 'paused') {
                         actionButtons = `
-                        <button class="btn btn-sm btn-success" onclick="emailApp.resumeCampaign(${campaign.id})"><i class="fas fa-play"></i> Reanudar</button>
-                        <button class="btn btn-sm btn-danger" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
+                        <button class="btn btn-sm btn-success"  style="padding: 1.5rem;" onclick="emailApp.resumeCampaign(${campaign.id})"><i class="fas fa-play"></i> Reanudar</button>
+                        <button class="btn btn-sm btn-danger"  style="padding: 1.5rem;" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
+                        <br>
                     `;
                     }
 
