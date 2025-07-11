@@ -249,7 +249,16 @@ class EmailMarketingAPI
                 $this->updateCampaign($id);
                 break;
             case 'DELETE':
-                $this->deleteCampaign($id);
+              //  $this->deleteCampaign($id);
+                break;
+            case 'pauseCampaign':
+                $this->pauseCampaign($id);
+                break;
+            case 'resumeCampaign':
+                $this->resumeCampaign($id);
+                break;
+            case 'cancelCampaign':
+                $this->cancelCampaign($id);
                 break;
             default:
                 $this->sendError(405, 'Method not allowed');
@@ -1362,7 +1371,65 @@ class EmailMarketingAPI
 
         $this->sendResponse(['message' => 'Campaign updated successfully']);
     }
+    /**
+     * Pone en pausa una campaña que se está enviando.
+     */
+    private function pauseCampaign($id)
+    {
+        if (empty($id)) {
+            $this->sendError(400, 'Se requiere el ID de la campaña.');
+        }
+        $pdo = $this->getConnection();
+        // Solo se pueden pausar campañas que estén en estado 'sending'
+        $stmt = $pdo->prepare("UPDATE campaigns SET status = 'paused' WHERE id = ? AND status = 'sending'");
+        $stmt->execute($id);
 
+        if ($stmt->rowCount() > 0) {
+            $this->sendResponse(null, 'Campaña pausada correctamente.');
+        } else {
+            $this->sendError(404, 'No se pudo pausar la campaña. Puede que ya no esté en estado de envío.');
+        }
+    }
+
+    /**
+     * Reanuda una campaña que estaba en pausa.
+     */
+    private function resumeCampaign($id)
+    {
+        if (empty($id)) {
+            $this->sendError(400, 'Se requiere el ID de la campaña.');
+        }
+        $pdo = $this->getConnection();
+        // Solo se pueden reanudar campañas que estén en estado 'paused'
+        $stmt = $pdo->prepare("UPDATE campaigns SET status = 'sending' WHERE id = ? AND status = 'paused'");
+        $stmt->execute($id);
+
+        if ($stmt->rowCount() > 0) {
+            $this->sendResponse(null, 'Campaña reanudada. El envío continuará en el próximo ciclo del cron.');
+        } else {
+            $this->sendError(404, 'No se pudo reanudar la campaña. Puede que no estuviera en pausa.');
+        }
+    }
+
+    /**
+     * Cancela una campaña que está en envío o en pausa.
+     */
+    private function cancelCampaign($id)
+    {
+        if (empty($id)) {
+            $this->sendError(400, 'Se requiere el ID de la campaña.');
+        }
+        $pdo = $this->getConnection();
+        // Se pueden cancelar campañas en envío o en pausa
+        $stmt = $pdo->prepare("UPDATE campaigns SET status = 'canceled' WHERE id = ? AND status IN ('sending', 'paused')");
+        $stmt->execute($id);
+
+        if ($stmt->rowCount() > 0) {
+            $this->sendResponse(null, 'Campaña cancelada correctamente.');
+        } else {
+            $this->sendError(404, 'No se pudo cancelar la campaña. Puede que ya haya sido enviada o cancelada.');
+        }
+    }
 
 
     private function handleSendTest()

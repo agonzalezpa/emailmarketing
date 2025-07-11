@@ -613,7 +613,7 @@ class EmailMarketingApp {
         }
     }
 
-    async loadCampaigns() {
+    async loadCampaignsOLD() {
         try {
             const response = await this.apiRequest('campaigns');
             // Validación mejorada de la respuesta
@@ -689,6 +689,88 @@ class EmailMarketingApp {
         `;
         }
     }
+    async loadCampaigns() {
+    try {
+        const response = await this.apiRequest('campaigns');
+        
+        // Tu lógica de validación de la respuesta (¡está muy bien hecha!)
+        let campaigns;
+        if (response && response.data && Array.isArray(response.data)) {
+            campaigns = response.data;
+        } else if (response && Array.isArray(response)) {
+            campaigns = response;
+        } else {
+            campaigns = [];
+            console.warn('Respuesta de API no tiene formato esperado:', response);
+        }
+
+        const campaignGrid = document.getElementById('campaigns-grid');
+
+        if (campaigns.length === 0) {
+            campaignGrid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-rocket"></i>
+                    <p>No hay campañas creadas</p>
+                    <button class="btn btn-outline" onclick="emailApp.openCampaignModal()">Crear Primera Campaña</button>
+                </div>
+            `;
+        } else {
+            campaignGrid.innerHTML = campaigns.map(campaign => {
+                
+                // --- LÓGICA PARA LOS BOTONES DE ACCIÓN ---
+                let actionButtons = '';
+                if (campaign.status === 'sending') {
+                    actionButtons = `
+                        <button class="btn btn-sm btn-warning" onclick="emailApp.pauseCampaign(${campaign.id})"><i class="fas fa-pause"></i> Pausar</button>
+                        <button class="btn btn-sm btn-danger" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
+                    `;
+                } else if (campaign.status === 'paused') {
+                    actionButtons = `
+                        <button class="btn btn-sm btn-success" onclick="emailApp.resumeCampaign(${campaign.id})"><i class="fas fa-play"></i> Reanudar</button>
+                        <button class="btn btn-sm btn-danger" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
+                    `;
+                }
+
+                // --- Se mantiene tu estructura HTML y se añade el div de acciones ---
+                return `
+                    <div class="card">
+                        <div class="card-content">
+                            <h3>${campaign.name}</h3>
+                            <p><strong>Asunto:</strong> ${campaign.subject}</p>
+                            <p><strong>Remitente:</strong> ${campaign.sender_name || 'N/A'}</p>
+                            
+                            <p><strong>Intentos de Envío:</strong> ${campaign.total_attempts || 0} de ${campaign.total_recipients || 0} destinatarios</p>
+                            <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>
+                            
+                            <p><strong>Estado:</strong> <span class="status-badge status-${campaign.status}">${campaign.status}</span></p>
+                            <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
+                            
+                            <div class="stats-row">
+                                <div><strong>${campaign.open_rate || 0}%</strong><small>Apertura (${campaign.total_opened || 0})</small></div>
+                                <div><strong>${campaign.click_rate || 0}%</strong><small>Clicks (${campaign.total_clicked || 0})</small></div>
+                                <div><strong>${campaign.bounce_rate || 0}%</strong><small>Rebotados (${campaign.total_bounced || 0})</small></div>
+                                <div><strong>${campaign.failure_rate || 0}%</strong><small>Fallidos (${campaign.total_failed || 0})</small></div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error("Error al cargar campañas:", error);
+        document.getElementById('campaigns-grid').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error al cargar campañas</p>
+                <button class="btn btn-outline" onclick="emailApp.loadCampaigns()">Reintentar</button>
+            </div>
+        `;
+    }
+}
+
 
     async loadDashboard() {
         try {
@@ -1621,6 +1703,38 @@ class EmailMarketingApp {
             this.loadContactLists();
             this.updateStats();
             this.showToast('success', 'Contacto eliminado', 'El contacto se ha eliminado correctamente.');
+        }
+    }
+    async pauseCampaign(campaignId) {
+        if (!confirm('¿Estás seguro de que quieres pausar esta campaña?')) return;
+        try {
+            await this.apiRequest(`campaigns/${campaignId}`, 'pauseCampaign');
+            this.showToast('success', 'Campaña Pausada', 'El envío se ha detenido.');
+            this.loadCampaigns(); // Recargar la vista para mostrar el nuevo estado
+        } catch (error) {
+            // El error ya es manejado por apiRequest
+        }
+    }
+
+    async resumeCampaign(campaignId) {
+        if (!confirm('¿Estás seguro de que quieres reanudar esta campaña?')) return;
+        try {
+            await this.apiRequest(`campaigns/${campaignId}`, 'resumeCampaign');
+            this.showToast('success', 'Campaña Reanudada', 'El envío continuará pronto.');
+            this.loadCampaigns();
+        } catch (error) {
+            // El error ya es manejado por apiRequest
+        }
+    }
+
+    async cancelCampaign(campaignId) {
+        if (!confirm('¿Estás seguro de que quieres cancelar esta campaña? Esta acción no se puede deshacer.')) return;
+        try {
+            await this.apiRequest(`campaigns/${campaignId}`, 'cancelCampaign');
+            this.showToast('success', 'Campaña Cancelada', 'El envío se ha cancelado permanentemente.');
+            this.loadCampaigns();
+        } catch (error) {
+            // El error ya es manejado por apiRequest
         }
     }
 
