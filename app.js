@@ -690,49 +690,49 @@ class EmailMarketingApp {
         }
     }
     async loadCampaigns() {
-    try {
-        const response = await this.apiRequest('campaigns');
-        
-        // Tu lógica de validación de la respuesta (¡está muy bien hecha!)
-        let campaigns;
-        if (response && response.data && Array.isArray(response.data)) {
-            campaigns = response.data;
-        } else if (response && Array.isArray(response)) {
-            campaigns = response;
-        } else {
-            campaigns = [];
-            console.warn('Respuesta de API no tiene formato esperado:', response);
-        }
+        try {
+            const response = await this.apiRequest('campaigns');
 
-        const campaignGrid = document.getElementById('campaigns-grid');
+            // Tu lógica de validación de la respuesta (¡está muy bien hecha!)
+            let campaigns;
+            if (response && response.data && Array.isArray(response.data)) {
+                campaigns = response.data;
+            } else if (response && Array.isArray(response)) {
+                campaigns = response;
+            } else {
+                campaigns = [];
+                console.warn('Respuesta de API no tiene formato esperado:', response);
+            }
 
-        if (campaigns.length === 0) {
-            campaignGrid.innerHTML = `
+            const campaignGrid = document.getElementById('campaigns-grid');
+
+            if (campaigns.length === 0) {
+                campaignGrid.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-rocket"></i>
                     <p>No hay campañas creadas</p>
                     <button class="btn btn-outline" onclick="emailApp.openCampaignModal()">Crear Primera Campaña</button>
                 </div>
             `;
-        } else {
-            campaignGrid.innerHTML = campaigns.map(campaign => {
-                
-                // --- LÓGICA PARA LOS BOTONES DE ACCIÓN ---
-                let actionButtons = '';
-                if (campaign.status === 'sending') {
-                    actionButtons = `
+            } else {
+                campaignGrid.innerHTML = campaigns.map(campaign => {
+
+                    // --- LÓGICA PARA LOS BOTONES DE ACCIÓN ---
+                    let actionButtons = '';
+                    if (campaign.status === 'sending') {
+                        actionButtons = `
                         <button class="btn btn-sm btn-warning" onclick="emailApp.pauseCampaign(${campaign.id})"><i class="fas fa-pause"></i> Pausar</button>
                         <button class="btn btn-sm btn-danger" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
                     `;
-                } else if (campaign.status === 'paused') {
-                    actionButtons = `
+                    } else if (campaign.status === 'paused') {
+                        actionButtons = `
                         <button class="btn btn-sm btn-success" onclick="emailApp.resumeCampaign(${campaign.id})"><i class="fas fa-play"></i> Reanudar</button>
                         <button class="btn btn-sm btn-danger" onclick="emailApp.cancelCampaign(${campaign.id})"><i class="fas fa-times-circle"></i> Cancelar</button>
                     `;
-                }
+                    }
 
-                // --- Se mantiene tu estructura HTML y se añade el div de acciones ---
-                return `
+                    // --- Se mantiene tu estructura HTML y se añade el div de acciones ---
+                    return `
                     <div class="card">
                        <div style="padding: 1.5rem;">
                         <h3>${campaign.name}</h3>
@@ -769,20 +769,21 @@ class EmailMarketingApp {
                             ${actionButtons}
                         </div>
                     </div>
+                    <br>
                 `;
-            }).join('');
-        }
-    } catch (error) {
-        console.error("Error al cargar campañas:", error);
-        document.getElementById('campaigns-grid').innerHTML = `
+                }).join('');
+            }
+        } catch (error) {
+            console.error("Error al cargar campañas:", error);
+            document.getElementById('campaigns-grid').innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Error al cargar campañas</p>
                 <button class="btn btn-outline" onclick="emailApp.loadCampaigns()">Reintentar</button>
             </div>
         `;
+        }
     }
-}
 
 
     async loadDashboard() {
@@ -1721,7 +1722,7 @@ class EmailMarketingApp {
     async pauseCampaign(campaignId) {
         if (!confirm('¿Estás seguro de que quieres pausar esta campaña?')) return;
         try {
-            await this.apiRequest(`campaigns/${campaignId}`, 'pauseCampaign');
+            await this.apiRequest(`campaigns?pauseCampaign${campaignId}`, 'POST');
             this.showToast('success', 'Campaña Pausada', 'El envío se ha detenido.');
             this.loadCampaigns(); // Recargar la vista para mostrar el nuevo estado
         } catch (error) {
