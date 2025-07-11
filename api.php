@@ -1395,7 +1395,7 @@ class EmailMarketingAPI
         $pdo = $this->getConnection();
         // Solo se pueden pausar campañas que estén en estado 'sending'
         $stmt = $pdo->prepare("UPDATE campaigns SET status = 'paused' WHERE id = ? AND status = 'sending'");
-        $stmt->execute($id);
+        $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
             $this->sendResponse(null, 'Campaña pausada correctamente.');
@@ -1415,7 +1415,7 @@ class EmailMarketingAPI
         $pdo = $this->getConnection();
         // Solo se pueden reanudar campañas que estén en estado 'paused'
         $stmt = $pdo->prepare("UPDATE campaigns SET status = 'sending' WHERE id = ? AND status = 'paused'");
-        $stmt->execute($id);
+        $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
             $this->sendResponse(null, 'Campaña reanudada. El envío continuará en el próximo ciclo del cron.');
@@ -1435,7 +1435,7 @@ class EmailMarketingAPI
         $pdo = $this->getConnection();
         // Se pueden cancelar campañas en envío o en pausa
         $stmt = $pdo->prepare("UPDATE campaigns SET status = 'canceled' WHERE id = ? AND status IN ('sending', 'paused')");
-        $stmt->execute($id);
+        $stmt->execute([$id] );
 
         if ($stmt->rowCount() > 0) {
             $this->sendResponse(null, 'Campaña cancelada correctamente.');
