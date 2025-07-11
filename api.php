@@ -775,7 +775,7 @@ class EmailMarketingAPI
         }
 
         // Definir campos estándar de la tabla contacts
-        $standardFields = ['name', 'email', 'status', 'tags', 'telefono', 'dni / ruc', 'departamento', 'provincia', 'distrito', 'genero', 'fecha nacimiento'];
+        $standardFields = ['name', 'email', 'status', 'tags'];
 
         $rowNumber = 1;
         $newContactIds = [];
