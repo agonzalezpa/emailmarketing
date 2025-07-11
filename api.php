@@ -1271,7 +1271,7 @@ class EmailMarketingAPI
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            $this->sendResponse(null, 'Campaña pausada correctamente.');
+            $this->sendResponse( 'Campaña pausada correctamente.');
         } else {
             $this->sendError(404, 'No se pudo pausar la campaña. Puede que ya no esté en estado de envío.');
         }
@@ -1291,7 +1291,7 @@ class EmailMarketingAPI
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            $this->sendResponse(null, 'Campaña reanudada. El envío continuará en el próximo ciclo del cron.');
+            $this->sendResponse('Campaña reanudada. El envío continuará en el próximo ciclo del cron.');
         } else {
             $this->sendError(404, 'No se pudo reanudar la campaña. Puede que no estuviera en pausa.');
         }
@@ -1311,7 +1311,7 @@ class EmailMarketingAPI
         $stmt->execute([$id] );
 
         if ($stmt->rowCount() > 0) {
-            $this->sendResponse(null, 'Campaña cancelada correctamente.');
+            $this->sendResponse('Campaña cancelada correctamente.');
         } else {
             $this->sendError(404, 'No se pudo cancelar la campaña. Puede que ya haya sido enviada o cancelada.');
         }
