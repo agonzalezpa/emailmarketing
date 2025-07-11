@@ -48,8 +48,8 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $id_recip
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port = 465;
 
-        $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
-        $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+       // $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+       // $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
 
         $mail->CharSet = 'UTF-8';
         $mail->addCustomHeader('X-Campaign-Recipient-ID', $id_recipient);
@@ -74,6 +74,18 @@ function sendEmail($sender, $toEmail, $toName, $subject, $htmlContent, $id_recip
     }
 }
 
+// Función para reemplazar variables con manejo de variables inexistentes
+function replaceVariables($content, $variables)
+{
+    // Primero reemplazar las variables que existen
+    $content = str_replace(array_keys($variables), array_values($variables), $content);
+
+    // Luego eliminar/reemplazar variables que no existen (formato {{variable}})
+    $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
+
+    return $content;
+}
+
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {
     file_put_contents(__DIR__ . '/email_cron.log', "[" . date('Y-m-d H:i:s') . "] Cron ejecutandose\n", FILE_APPEND);
@@ -89,7 +101,7 @@ try {
     ");
     $campaigns = $campaignsStmt->fetchAll();
     $pdo = null;
-    
+
     if (empty($campaigns)) {
         file_put_contents(__DIR__ . '/email_cron.log', "No hay campañas activas para procesar.\n\n", FILE_APPEND);
         exit;
@@ -142,20 +154,20 @@ try {
 
         // 3. Obtén los destinatarios pendientes para esta campaña específica
         $stmt = $pdo->prepare("
-            SELECT cr.*, c.email, c.name, cmp.subject, cmp.html_content, cmp.sender_id
-            FROM campaign_recipients cr
-            JOIN contacts c ON cr.contact_id = c.id
-            JOIN campaigns cmp ON cr.campaign_id = cmp.id
-            WHERE cr.campaign_id = ?
-              AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
-            ORDER BY cr.id ASC
-            LIMIT ?
+          SELECT cr.*, c.email, c.name, c.custom_fields, cmp.subject, cmp.html_content, cmp.sender_id,cmp.file_attached
+FROM campaign_recipients cr
+JOIN contacts c ON cr.contact_id = c.id
+JOIN campaigns cmp ON cr.campaign_id = cmp.id
+WHERE cr.campaign_id = ?
+  AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
+ORDER BY cr.id ASC
+LIMIT ?
         ");
         $stmt->execute([$campaignId, $batchLimit]);
         $recipients = $stmt->fetchAll();
 
         file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId: Se encontraron " . count($recipients) . " destinatarios para procesar.\n", FILE_APPEND);
-        
+
         // Cierra la conexión principal antes del envío masivo
         $pdo = null;
 
@@ -181,13 +193,38 @@ try {
                     '{{TRACK_LINK}}' => $tracking_link,
                 ];
 
-                $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
-                $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $recipient['html_content']);
+                // Decodificar custom_fields del contacto actual
+                if (!empty($recipient['custom_fields'])) {
+                    $customFields = json_decode($recipient['custom_fields'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($customFields)) {
+                        foreach ($customFields as $key => $value) {
+                            // Agregar cada campo personalizado como variable
+                            $variables['{{' . $key . '}}'] = $value;
+                        }
+                    }
+                }
+                $personalizedSubject = replaceVariables($recipient['subject'], $variables);
+                $personalizedHtml = replaceVariables($recipient['html_content'], $variables);
+                //$personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
+                //$personalizedHtml = str_replace(array_keys($variables), array_values($variables), $recipient['html_content']);
 
-                $attachmentPath = __DIR__ . '/precios_base.pdf';
+                // Determinar archivo adjunto de la campaña
+                $attachmentPath = null;
+                if (!empty($recipient['file_attached'])) {
+                    $campaignAttachment = __DIR__ . '/uploads/' . $recipient['file_attached'];
+                    if (file_exists($campaignAttachment)) {
+                        $attachmentPath = $campaignAttachment;
+                    } else {
+                        // Log si el archivo no existe
+                        file_put_contents(__DIR__ . '/email_cron.log', "Archivo adjunto no encontrado para campaña $campaignId: {$recipient['file_attached']}\n", FILE_APPEND);
+                    }
+                }
+
+
+               // $attachmentPath = __DIR__ . '/precios_base.pdf';
                 $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
                 $finalHtmlContent = $personalizedHtml . $trackingPixel;
-                
+
                 $emailSent = sendEmail($sender, $recipient['email'], $recipient['name'], $personalizedSubject, $finalHtmlContent, $recipient['id'], file_exists($attachmentPath) ? $attachmentPath : null);
 
                 if ($emailSent['success']) {
@@ -210,12 +247,12 @@ try {
         $pdo = createPdoConnection();
         file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId finalizada. Correos procesados en este lote: $totalProcesados.\n", FILE_APPEND);
         echo "\n[OK] Campaña $campaignId: $totalProcesados correos a las " . date('Y-m-d H:i:s') . "\n";
-        
+
         // --- Marcar campaña como completada si corresponde ---
         $check = $pdo->prepare("SELECT COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND (status = 'pending' OR (status = 'failed' AND retry_count < 3))");
         $check->execute([$campaignId]);
         $remaining = $check->fetchColumn();
-        
+
         if ($remaining == 0) {
             $updateCampaignStmt = $pdo->prepare("UPDATE campaigns SET status = 'sent' WHERE id = ? AND status = 'sending'");
             $updateCampaignStmt->execute([$campaignId]);
@@ -225,7 +262,6 @@ try {
     } // FIN DEL FOR
 
     file_put_contents(__DIR__ . '/email_cron.log', "Cron finalizado completamente.\n\n", FILE_APPEND);
-
 } catch (Throwable $e) {
     // Captura cualquier error fatal que no haya sido manejado antes
     $errorMessage = "ERROR FATAL: " . $e->getMessage() . " en el archivo " . $e->getFile() . " en la línea " . $e->getLine();
