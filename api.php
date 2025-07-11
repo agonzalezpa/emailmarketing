@@ -1356,8 +1356,8 @@ class EmailMarketingAPI
 
             // 2. Incrusta las imágenes desde tu ruta local usando __DIR__
             //    Esto asegura que la ruta siempre sea correcta sin importar desde dónde se ejecute el script.
-            $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
-            $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+           // $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+           // $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
             // $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
 
             // --- CONTENIDO DEL CORREO ---
