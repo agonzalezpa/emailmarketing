@@ -475,10 +475,9 @@ class EmailMarketingApp {
                 await this.loadContactListMembersFromAPI();
                 this.loadContactLists();
                 this.updateStats();
-
                 this.closeModal('import-csv-modal');
 
-                const message = `${result.data.imported} contactos importados correctamente.`;
+                const message = `${result.data.message}.`;
                 const errorMessage = result.data.errors.length > 0 ?
                     ` ${result.data.errors.length} errores encontrados.` : '';
 
