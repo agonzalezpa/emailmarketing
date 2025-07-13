@@ -19,7 +19,7 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'u750684196_email_marketin');
 define('DB_USER', 'u750684196_info');
 define('DB_PASS', 'Olivera19%');
-define('LOG_FILE', __DIR__ . '/process_bounces.log');
+define('LOG_FILE', __DIR__ . '/logs/process_bounces.log');
 
 // --- FUNCIÓN DE LOGGING ---
 function log_message($message) {
