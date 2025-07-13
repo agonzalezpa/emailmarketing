@@ -1594,10 +1594,11 @@ class EmailMarketingAPI
                 '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'],
             ];
 
-            $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
+            // $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
+            $personalizedSubject = $this->parseDynamicTemplate($data['subject'], $variables);
+            //$personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
 
-            // Importante: El html_content que recibes ya debe usar los CIDs
-            $personalizedHtml = str_replace(array_keys($variables), array_values($variables), $data['html_content']);
+            $personalizedHtml = $this->parseDynamicTemplate($data['html_content'], $variables);
 
             // --- ARMADO Y ENVÍO DEL CORREO ---
             $mail->setFrom($sender['email'], $sender['name']);
@@ -1613,6 +1614,87 @@ class EmailMarketingAPI
             $this->sendError(500, 'No se pudo enviar el correo de prueba: ' . $mail->ErrorInfo);
         }
     }
+    /**
+     * Procesa una plantilla con lógica condicional y reemplaza variables.
+     * Soporta: {{variable}}, [SI variable EXISTE], [SI variable NO EXISTE], [SI variable=valor], [SI SEXO=FEMENINO/MASCULINO]
+     * Es recursiva para manejar bloques anidados.
+     *
+     * @param string $content El contenido de la plantilla con la lógica.
+     * @param array $variables Un array asociativo con todas las variables disponibles (ej: '{{name}}' => 'Juan').
+     * @return string El contenido procesado.
+     */
+    function parseDynamicTemplate($content, $variables)
+    {
+        // --- Etapa 1: Reemplazo de variables simples como {{name}} ---
+        // Esto asegura que las variables dentro de los bloques SI/SINO se resuelvan primero.
+        $content = str_replace(array_keys($variables), array_values($variables), $content);
+
+        // --- Etapa 2: Procesamiento de bloques condicionales [SI...]...[FIN SI] ---
+        $pattern = '/\[SI\s+(.*?)\s*\](.*?)(\[SINO\](.*?)\[FIN\s+SI\]|\s*\[FIN\s+SI\])/s';
+
+        // Usamos preg_replace_callback para evaluar cada bloque condicional que encuentre
+        $content = preg_replace_callback($pattern, function ($matches) use ($variables) {
+            $condition = trim($matches[1]);
+            $ifContent = $matches[2];
+            $elseContent = isset($matches[4]) ? $matches[4] : '';
+
+            $parts = explode(' ', $condition, 3);
+            $key = '{{' . $parts[0] . '}}'; // La clave de la variable, ej: {{cargo}}
+            $operator = isset($parts[1]) ? strtoupper($parts[1]) : 'EXISTE';
+            $value = isset($parts[2]) ? $parts[2] : null;
+
+            $isConditionMet = false;
+
+            switch ($operator) {
+                case 'EXISTE':
+                    $isConditionMet = isset($variables[$key]) && !empty($variables[$key]);
+                    break;
+                case 'NO': // Para [SI NOMBRE NO EXISTE]
+                    $isConditionMet = !isset($variables[$key]) || empty($variables[$key]);
+                    break;
+                case '=':
+                    $isConditionMet = isset($variables[$key]) && strtolower($variables[$key]) == strtolower($value);
+                    break;
+            }
+
+            // Si la condición se cumple, procesamos el contenido del "IF"
+            if ($isConditionMet) {
+                // Llamada recursiva para procesar bloques anidados dentro del contenido del IF
+                return parseDynamicTemplate($ifContent, $variables);
+            } else {
+                // Si no, procesamos el contenido del "ELSE"
+                return parseDynamicTemplate($elseContent, $variables);
+            }
+        }, $content);
+
+        // --- Etapa 3: Procesamiento de género [SI SEXO=...] ---
+        // Esto se hace después para ajustar el texto ya elegido por los condicionales.
+        $genderKey = '{{sexo}}';
+        $gender = isset($variables[$genderKey]) ? strtolower($variables[$genderKey]) : 'masculino'; // Masculino por defecto
+
+        $content = preg_replace_callback('/\[GENDER:([a-zA-Z]+)\|([a-zA-Z]+)\]/', function ($matches) use ($gender) {
+            $masculine = $matches[1];
+            $feminine = $matches[2];
+            return ($gender == 'femenino') ? $feminine : $masculine;
+        }, $content);
+
+        // Simplificamos la sintaxis para terminaciones o/a
+        $content = preg_replace_callback('/\[GENDER:o\|a\]/', function ($matches) use ($gender) {
+            return ($gender == 'femenino') ? 'a' : 'o';
+        }, $content);
+
+
+        // --- Etapa 4: Limpieza final de cualquier placeholder que no se haya resuelto ---
+        // $content = preg_replace('/\{\{[^}]+\}\}/', '', $content); // Opcional: puedes eliminar esta línea si prefieres ver los errores.
+
+        return $content;
+    }
+
+
+
+
+
+
 
 
     //Crea y pone la campaña en estado enviandose para que el CRON envie poco a poco los 
