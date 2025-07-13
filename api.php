@@ -605,7 +605,6 @@ class EmailMarketingAPI
      * Importar contactos desde un csv
      * @return void
      */
-
     private function importContacts()
     {
         // Configuración inicial para archivos grandes
@@ -974,7 +973,7 @@ class EmailMarketingAPI
         }
     }
 
-    // Nuevo método para asignar contactos a listas de forma optimizada
+    // Nuevo método para asignar contactos a listas de forma optimizada y por lotes
     private function assignContactsToLists($pdo, $listIds, $allContactIds)
     {
         if (empty($listIds) || empty($allContactIds)) return;
@@ -993,18 +992,47 @@ class EmailMarketingAPI
 
             if (empty($validListIds)) return;
 
-            // Preparar para inserción masiva
-            $insertValues = [];
-            $placeholders = [];
+            // Procesar por lotes para evitar el límite de placeholders
+            $batchSize = 1000; // Lotes de 1000 asignaciones por vez
+            $insertStmt = $pdo->prepare("INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+
+            $totalAssignments = 0;
+            $batchInsertValues = [];
+            $batchPlaceholders = [];
 
             foreach ($validListIds as $listId) {
                 foreach ($allContactIds as $contactId) {
-                    $insertValues[] = $listId;
-                    $insertValues[] = $contactId;
-                    $placeholders[] = '(?, ?)';
+                    $batchInsertValues[] = $listId;
+                    $batchInsertValues[] = $contactId;
+                    $batchPlaceholders[] = '(?, ?)';
+                    $totalAssignments++;
+
+                    // Cuando llegamos al tamaño del lote, ejecutar la inserción
+                    if ($totalAssignments >= $batchSize) {
+                        $this->executeBatchListAssignment($pdo, $batchInsertValues, $batchPlaceholders);
+
+                        // Resetear arrays para el siguiente lote
+                        $batchInsertValues = [];
+                        $batchPlaceholders = [];
+                        $totalAssignments = 0;
+                    }
                 }
             }
 
+            // Ejecutar el último lote si queda algo
+            if ($totalAssignments > 0) {
+                $this->executeBatchListAssignment($pdo, $batchInsertValues, $batchPlaceholders);
+            }
+        } catch (Exception $e) {
+            // Log error but don't stop the process
+            error_log("Error asignando contactos a listas: " . $e->getMessage());
+        }
+    }
+
+    // Método auxiliar para ejecutar la inserción por lotes
+    private function executeBatchListAssignment($pdo, $insertValues, $placeholders)
+    {
+        try {
             if (!empty($placeholders)) {
                 $sql = "INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES " .
                     implode(', ', $placeholders);
@@ -1013,8 +1041,25 @@ class EmailMarketingAPI
                 $stmt->execute($insertValues);
             }
         } catch (Exception $e) {
-            // Log error but don't stop the process
-            error_log("Error asignando contactos a listas: " . $e->getMessage());
+            // Si falla el lote, intentar uno por uno
+            $this->fallbackSingleListAssignment($pdo, $insertValues);
+        }
+    }
+
+    // Método de fallback para inserción individual
+    private function fallbackSingleListAssignment($pdo, $insertValues)
+    {
+        try {
+            $stmt = $pdo->prepare("INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)");
+
+            // Los valores vienen en pares: [listId, contactId, listId, contactId, ...]
+            for ($i = 0; $i < count($insertValues); $i += 2) {
+                if (isset($insertValues[$i + 1])) {
+                    $stmt->execute([$insertValues[$i], $insertValues[$i + 1]]);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Error en fallback de asignación de listas: " . $e->getMessage());
         }
     }
 
