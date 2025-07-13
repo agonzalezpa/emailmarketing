@@ -1660,10 +1660,10 @@ class EmailMarketingAPI
             // Si la condición se cumple, procesamos el contenido del "IF"
             if ($isConditionMet) {
                 // Llamada recursiva para procesar bloques anidados dentro del contenido del IF
-                return parseDynamicTemplate($ifContent, $variables);
+                return $this->parseDynamicTemplate($ifContent, $variables);
             } else {
                 // Si no, procesamos el contenido del "ELSE"
-                return parseDynamicTemplate($elseContent, $variables);
+                return $this->parseDynamicTemplate($elseContent, $variables);
             }
         }, $content);
 
