@@ -88,7 +88,7 @@ function replaceVariables($content, $variables)
 
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {
-    file_put_contents(__DIR__ . '/email_cron.log', "[" . date('Y-m-d H:i:s') . "] Cron ejecutandose\n", FILE_APPEND);
+    file_put_contents(__DIR__ . '/logs/email_cron.log', "[" . date('Y-m-d H:i:s') . "] Cron ejecutandose\n", FILE_APPEND);
 
     $pdo = createPdoConnection();
 
@@ -103,7 +103,7 @@ try {
     $pdo = null;
 
     if (empty($campaigns)) {
-        file_put_contents(__DIR__ . '/email_cron.log', "No hay campañas activas para procesar.\n\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/logs/email_cron.log', "No hay campañas activas para procesar.\n\n", FILE_APPEND);
         exit;
     }
 
@@ -132,10 +132,10 @@ try {
         $remainingForDay = $dailyLimit - $sentToday;
         $batchLimit = min($batchLimit, $remainingForDay);
 
-        file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId (sender $senderId): enviados hoy $sentToday, ideal hasta ahora $idealSentCount, lote $batchLimit, límite diario $dailyLimit\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId (sender $senderId): enviados hoy $sentToday, ideal hasta ahora $idealSentCount, lote $batchLimit, límite diario $dailyLimit\n", FILE_APPEND);
 
         if ($batchLimit <= 0) {
-            file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId tiene ritmo correcto. Saltando.\n", FILE_APPEND);
+            file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId tiene ritmo correcto. Saltando.\n", FILE_APPEND);
             continue;
         }
 
@@ -148,7 +148,7 @@ try {
         $sender = $sendersCache[$senderId];
 
         if (!$sender) {
-            file_put_contents(__DIR__ . '/email_cron.log', "Remitente con ID $senderId no encontrado para campaña $campaignId.\n", FILE_APPEND);
+            file_put_contents(__DIR__ . '/logs/email_cron.log', "Remitente con ID $senderId no encontrado para campaña $campaignId.\n", FILE_APPEND);
             continue;
         }
 
@@ -166,7 +166,7 @@ LIMIT ?
         $stmt->execute([$campaignId, $batchLimit]);
         $recipients = $stmt->fetchAll();
 
-        file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId: Se encontraron " . count($recipients) . " destinatarios para procesar.\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId: Se encontraron " . count($recipients) . " destinatarios para procesar.\n", FILE_APPEND);
 
         // Cierra la conexión principal antes del envío masivo
         $pdo = null;
@@ -216,14 +216,14 @@ LIMIT ?
                         $attachmentPath = $campaignAttachment;
                     } else {
                         // Log si el archivo no existe
-                        file_put_contents(__DIR__ . '/email_cron.log', "Archivo adjunto no encontrado para campaña $campaignId: {$recipient['file_attached']}\n", FILE_APPEND);
+                        file_put_contents(__DIR__ . '/logs/email_cron.log', "Archivo adjunto no encontrado para campaña $campaignId: {$recipient['file_attached']}\n", FILE_APPEND);
                     }
                 }
 
 
                 // $attachmentPath = __DIR__ . '/precios_base.pdf';
                 //$trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
-               // $finalHtmlContent = $personalizedHtml . $trackingPixel;
+                // $finalHtmlContent = $personalizedHtml . $trackingPixel;
 
                 $timestamp = time();
                 $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '?t=' . $timestamp . '" width="1" height="1" style="display:none;"/>';
@@ -242,13 +242,13 @@ LIMIT ?
                 $loopPdo = null;
             } catch (PDOException $e) {
                 $errorMessage = "Error de BD procesando destinatario ID {$recipient['id']}: " . $e->getMessage();
-                file_put_contents(__DIR__ . '/email_cron.log', $errorMessage . "\n", FILE_APPEND);
+                file_put_contents(__DIR__ . '/logs/email_cron.log', $errorMessage . "\n", FILE_APPEND);
                 continue;
             }
         }
 
         $pdo = createPdoConnection();
-        file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId finalizada. Correos procesados en este lote: $totalProcesados.\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId finalizada. Correos procesados en este lote: $totalProcesados.\n", FILE_APPEND);
         echo "\n[OK] Campaña $campaignId: $totalProcesados correos a las " . date('Y-m-d H:i:s') . "\n";
 
         // --- Marcar campaña como completada si corresponde ---
@@ -259,15 +259,15 @@ LIMIT ?
         if ($remaining == 0) {
             $updateCampaignStmt = $pdo->prepare("UPDATE campaigns SET status = 'sent' WHERE id = ? AND status = 'sending'");
             $updateCampaignStmt->execute([$campaignId]);
-            file_put_contents(__DIR__ . '/email_cron.log', "Campaña $campaignId marcada como completada.\n", FILE_APPEND);
+            file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId marcada como completada.\n", FILE_APPEND);
         }
         $pdo = null;
     } // FIN DEL FOR
 
-    file_put_contents(__DIR__ . '/email_cron.log', "Cron finalizado completamente.\n\n", FILE_APPEND);
+    file_put_contents(__DIR__ . '/logs/email_cron.log', "Cron finalizado completamente.\n\n", FILE_APPEND);
 } catch (Throwable $e) {
     // Captura cualquier error fatal que no haya sido manejado antes
     $errorMessage = "ERROR FATAL: " . $e->getMessage() . " en el archivo " . $e->getFile() . " en la línea " . $e->getLine();
-    file_put_contents(__DIR__ . '/email_cron.log', $errorMessage . "\n", FILE_APPEND);
+    file_put_contents(__DIR__ . '/logs/email_cron.log', $errorMessage . "\n", FILE_APPEND);
     die($errorMessage);
 }

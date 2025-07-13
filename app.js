@@ -652,7 +652,7 @@ class EmailMarketingApp {
                         <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>
                         
                         <p><strong>Estado:</strong> ${campaign.status}</p>
-                        <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
+                        <p><strong>Inicio:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
                         
                         <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
                             <div>
@@ -745,7 +745,7 @@ class EmailMarketingApp {
                         <p><strong>Intentos de Envío:</strong> ${campaign.total_attempts || 0} de ${campaign.total_recipients || 0} destinatarios</p>
                         <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>                        
                         <p><strong>Estado:</strong> ${campaign.status}</p>
-                        <p><strong>Finalizada:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>                        
+                        <p><strong>Inicio:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>                        
                         <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
                             <div>
                                 <strong>${campaign.open_rate || 0}%</strong>

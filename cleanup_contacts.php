@@ -1,4 +1,5 @@
 <?php
+
 /**
  * cleanup_contacts.php
  *
@@ -14,10 +15,11 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'u750684196_email_marketin');
 define('DB_USER', 'u750684196_info');
 define('DB_PASS', 'Olivera19%');
-define('LOG_FILE', __DIR__ . '/cleanup_contacts.log');
+define('LOG_FILE', __DIR__ . '/logs/cleanup_contacts.log');
 
 // --- FUNCIÓN DE LOGGING ---
-function log_message($message) {
+function log_message($message)
+{
     $timestamp = date('Y-m-d H:i:s');
     file_put_contents(LOG_FILE, "[$timestamp] " . $message . "\n", FILE_APPEND);
 }
@@ -39,16 +41,17 @@ try {
     // 1. Encontrar todos los IDs de contacto únicos que han rebotado o fallado
     //    Y QUE NO ESTÉN YA MARCADOS COMO 'inactive'.
     log_message("Buscando IDs de contactos para desactivar...");
-    
+
     // --- CONSULTA OPTIMIZADA ---
     $stmt = $pdo->query("
-        SELECT DISTINCT cr.contact_id 
-        FROM campaign_recipients cr
-        JOIN contacts c ON cr.contact_id = c.id
-        WHERE (cr.status = 'bounced' OR cr.retry_count >= 3)
-          AND c.status != 'inactive'
+                SELECT DISTINCT cr.contact_id 
+                FROM campaign_recipients cr
+                JOIN contacts c ON cr.contact_id = c.id
+                WHERE (cr.status = 'bounced' OR cr.retry_count >= 3)
+                AND c.status != 'inactive'
+                AND (c.custom_fields IS NULL OR JSON_EXTRACT(c.custom_fields, '$.verification_failed_reason') IS NULL)
     ");
-    
+
     $contact_ids_to_disable = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
     if (empty($contact_ids_to_disable)) {
@@ -82,7 +85,6 @@ try {
     $updateStmt->execute($contact_ids_to_disable);
     $affected_rows = $updateStmt->rowCount();
     log_message("Se actualizaron exitosamente " . $affected_rows . " registros en la tabla 'contacts'.");
-
 } catch (PDOException $e) {
     log_message("Ha ocurrido un error durante el proceso de limpieza: " . $e->getMessage());
 }
@@ -93,5 +95,3 @@ log_message("Membresías a listas eliminadas: " . ($deleted_memberships ?? 0));
 log_message("Contactos marcados como inactivos: " . ($affected_rows ?? 0));
 log_message("Proceso de limpieza finalizado.");
 log_message("============================================");
-
-?>
