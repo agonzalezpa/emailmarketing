@@ -267,6 +267,15 @@ function deactivateContact($pdo, $contactId, $reason)
         $stmt = $pdo->prepare("DELETE FROM contact_list_members WHERE contact_id = ?");
         $stmt->execute([$contactId]);
 
+        // 3. ELIMINAR campaign_recipients pendientes y failed
+        $stmt = $pdo->prepare("
+            DELETE FROM campaign_recipients 
+            WHERE contact_id = ? 
+            AND (status = 'pending')
+        ");
+        $stmt->execute([$contactId]);
+        $deletedRecipients = $stmt->rowCount();
+
         $pdo->commit();
         return true;
     } catch (Exception $e) {
