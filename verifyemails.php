@@ -360,7 +360,7 @@ try {
                 $stmt->execute([json_encode($customFields), $contact['id']]);
                 $totalValid++;
 
-                logVerificationResult($contact['id'], $contact['email'], true, $verificationResult['reason']);
+               // logVerificationResult($contact['id'], $contact['email'], true, $verificationResult['reason']);
             } else {
                 // Email inválido - desactivar contacto
                 $customFields['verification_failed_reason'] = $verificationResult['reason'];
