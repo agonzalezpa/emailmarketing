@@ -274,7 +274,8 @@ function deactivateContact($pdo, $contactId, $reason)
             AND (status = 'pending')
         ");
         $stmt->execute([$contactId]);
-        $deletedRecipients = $stmt->rowCount();
+       
+
 
         $pdo->commit();
         return true;
