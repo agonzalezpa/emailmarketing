@@ -1623,7 +1623,7 @@ class EmailMarketingAPI
      * @param array $variables Un array asociativo con todas las variables disponibles (ej: '{{name}}' => 'Juan').
      * @return string El contenido procesado.
      */
-    function parseDynamicTemplate($content, $variables)
+    private  function parseDynamicTemplate($content, $variables)
     {
         // --- Etapa 1: Reemplazo de variables simples como {{name}} ---
         // Esto asegura que las variables dentro de los bloques SI/SINO se resuelvan primero.
