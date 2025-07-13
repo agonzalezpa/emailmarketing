@@ -693,7 +693,7 @@ class EmailMarketingApp {
         try {
             const response = await this.apiRequest('campaigns');
 
-            // Tu lógica de validación de la respuesta (¡está muy bien hecha!)
+           
             let campaigns;
             if (response && response.data && Array.isArray(response.data)) {
                 campaigns = response.data;

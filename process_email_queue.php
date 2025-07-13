@@ -152,17 +152,28 @@ try {
             continue;
         }
 
-        // 3. Obtén los destinatarios pendientes para esta campaña específica
+      
+
+        // 3. Obtén los destinatarios pendientes priorizando contactos verificados
         $stmt = $pdo->prepare("
-          SELECT cr.*, c.email, c.name, c.custom_fields, cmp.subject, cmp.html_content, cmp.sender_id,cmp.file_attached
-FROM campaign_recipients cr
-JOIN contacts c ON cr.contact_id = c.id
-JOIN campaigns cmp ON cr.campaign_id = cmp.id
-WHERE cr.campaign_id = ?
-  AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
-ORDER BY cr.id ASC
-LIMIT ?
-        ");
+    SELECT cr.*, c.email, c.name, c.custom_fields, cmp.subject, cmp.html_content, cmp.sender_id, cmp.file_attached
+    FROM campaign_recipients cr
+    JOIN contacts c ON cr.contact_id = c.id
+    JOIN campaigns cmp ON cr.campaign_id = cmp.id
+    WHERE cr.campaign_id = ?
+      AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
+      AND c.status = 'active'
+    ORDER BY 
+        -- Priorizar contactos verificados recientemente
+        CASE 
+            WHEN JSON_EXTRACT(c.custom_fields, '$.last_verification_result') = 'verified' THEN 0
+            WHEN JSON_EXTRACT(c.custom_fields, '$.last_verified') IS NOT NULL THEN 1
+            ELSE 2
+        END,
+        cr.id ASC
+    LIMIT ?
+");
+
         $stmt->execute([$campaignId, $batchLimit]);
         $recipients = $stmt->fetchAll();
 
