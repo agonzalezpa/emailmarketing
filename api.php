@@ -233,50 +233,50 @@ class EmailMarketingAPI
     }
 
     private function handleCampaigns($method, $id)
-{
-    // Verificar si hay un parámetro action en la URL
-    $action = $_GET['action'] ?? null;
-    
-    if ($action) {
-        // Manejar acciones específicas
-        switch ($action) {
-            case 'pauseCampaign':
-                $this->pauseCampaign($id);
+    {
+        // Verificar si hay un parámetro action en la URL
+        $action = $_GET['action'] ?? null;
+
+        if ($action) {
+            // Manejar acciones específicas
+            switch ($action) {
+                case 'pauseCampaign':
+                    $this->pauseCampaign($id);
+                    break;
+                case 'resumeCampaign':
+                    $this->resumeCampaign($id);
+                    break;
+                case 'cancelCampaign':
+                    $this->cancelCampaign($id);
+                    break;
+                default:
+                    $this->sendError(400, 'Invalid action');
+            }
+            return;
+        }
+
+        // Manejar métodos HTTP estándar
+        switch ($method) {
+            case 'GET':
+                if ($id) {
+                    $this->getCampaign($id);
+                } else {
+                    $this->getCampaigns();
+                }
                 break;
-            case 'resumeCampaign':
-                $this->resumeCampaign($id);
+            case 'POST':
+                $this->createCampaign();
                 break;
-            case 'cancelCampaign':
-                $this->cancelCampaign($id);
+            case 'PUT':
+                $this->updateCampaign($id);
+                break;
+            case 'DELETE':
+                //  $this->deleteCampaign($id);
                 break;
             default:
-                $this->sendError(400, 'Invalid action');
+                $this->sendError(405, 'Method not allowed');
         }
-        return;
     }
-    
-    // Manejar métodos HTTP estándar
-    switch ($method) {
-        case 'GET':
-            if ($id) {
-                $this->getCampaign($id);
-            } else {
-                $this->getCampaigns();
-            }
-            break;
-        case 'POST':
-            $this->createCampaign();
-            break;
-        case 'PUT':
-            $this->updateCampaign($id);
-            break;
-        case 'DELETE':
-            //  $this->deleteCampaign($id);
-            break;
-        default:
-            $this->sendError(405, 'Method not allowed');
-    }
-}
 
     private function handleTemplates($method, $id)
     {
@@ -605,365 +605,418 @@ class EmailMarketingAPI
      * Importar contactos desde un csv
      * @return void
      */
-   
-   private function importContacts()
-{
-    // Configuración inicial para archivos grandes
-    ini_set('max_execution_time', 0); // Sin límite de tiempo
-    ini_set('memory_limit', '512M');  // Aumentar memoria disponible
-    
-    if (!isset($_FILES['csv_file'])) {
-        $this->sendError(400, 'Archivo CSV requerido.');
-    }
 
-    $file = $_FILES['csv_file'];
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        $this->sendError(400, 'Error al subir el archivo.');
-    }
+    private function importContacts()
+    {
+        // Configuración inicial para archivos grandes
+        ini_set('max_execution_time', 0); // Sin límite de tiempo
+        ini_set('memory_limit', '512M');  // Aumentar memoria disponible
 
-    // Verificar tipo MIME
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
+        if (!isset($_FILES['csv_file'])) {
+            $this->sendError(400, 'Archivo CSV requerido.');
+        }
 
-    $allowedTypes = ['text/csv', 'text/plain', 'application/vnd.ms-excel'];
-    if (!in_array($mimeType, $allowedTypes)) {
-        $this->sendError(400, 'Tipo de archivo inválido. Sube un archivo CSV.');
-    }
+        $file = $_FILES['csv_file'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $this->sendError(400, 'Error al subir el archivo.');
+        }
 
-    // Obtener listas seleccionadas
-    $listIds = [];
-    if (isset($_POST['list_ids'])) {
-        $listIds = is_array($_POST['list_ids']) ? $_POST['list_ids'] : json_decode($_POST['list_ids'], true);
-        if (!is_array($listIds)) $listIds = [];
-    }
+        // Verificar tipo MIME
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
 
-    // Limpiar archivo CSV antes de procesarlo
-    $cleanedFile = $this->cleanCSVFile($file['tmp_name']);
+        $allowedTypes = ['text/csv', 'text/plain', 'application/vnd.ms-excel'];
+        if (!in_array($mimeType, $allowedTypes)) {
+            $this->sendError(400, 'Tipo de archivo inválido. Sube un archivo CSV.');
+        }
 
-    // Abrir archivo limpio para lectura
-    if (($handle = fopen($cleanedFile, 'r')) === false) {
-        $this->sendError(400, 'No se puede leer el archivo CSV.');
-    }
+        // Obtener listas seleccionadas
+        $listIds = [];
+        if (isset($_POST['list_ids'])) {
+            $listIds = is_array($_POST['list_ids']) ? $_POST['list_ids'] : json_decode($_POST['list_ids'], true);
+            if (!is_array($listIds)) $listIds = [];
+        }
 
-    $pdo = $this->getConnection();
-    
-    // Configurar PDO para mejor rendimiento
-    $pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, false);
-    $pdo->beginTransaction();
-    
-    $imported = 0;
-    $updated = 0;
-    $errors = [];
-    $batchSize = 1000; // Procesar en lotes de 1000 registros
-    $currentBatch = 0;
-    $totalProcessed = 0;
+        // Limpiar archivo CSV antes de procesarlo
+        $cleanedFile = $this->cleanCSVFile($file['tmp_name']);
 
-    // Leer encabezado
-    $header = fgetcsv($handle);
-    if (!$header) {
+        // Abrir archivo limpio para lectura
+        if (($handle = fopen($cleanedFile, 'r')) === false) {
+            $this->sendError(400, 'No se puede leer el archivo CSV.');
+        }
+
+        $pdo = $this->getConnection();
+
+        // Configurar PDO para mejor rendimiento
+        $pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, false);
+        $pdo->beginTransaction();
+
+        $imported = 0;
+        $updated = 0;
+        $errors = [];
+        $batchSize = 1000; // Procesar en lotes de 1000 registros
+        $currentBatch = 0;
+        $totalProcessed = 0;
+
+        // Leer encabezado
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            if (file_exists($cleanedFile)) {
+                unlink($cleanedFile);
+            }
+            $this->sendError(400, 'Archivo CSV vacío o formato inválido.');
+        }
+
+        // Normalizar encabezados
+        $header = array_map(fn($col) => strtolower(trim($col)), $header);
+        $emailIndex = array_search('email', $header);
+
+        if ($emailIndex === false) {
+            fclose($handle);
+            $this->sendError(400, "Falta la columna requerida: email");
+        }
+
+        // Definir campos estándar de la tabla contacts
+        $standardFields = ['name', 'email', 'status', 'tags'];
+        $rowNumber = 1;
+        $newContactIds = [];
+        $allContactIds = []; // Para almacenar TODOS los contactos (nuevos y actualizados)
+
+        // Preparar statements una sola vez (fuera del bucle)
+        $checkStmt = $pdo->prepare("SELECT id, status FROM contacts WHERE email = ?");
+        $updateStmt = null;
+        $insertStmt = null;
+        $customFieldsStmt = $pdo->prepare("SELECT custom_fields FROM contacts WHERE id = ?");
+
+        // Arrays para procesamiento por lotes
+        $batchInserts = [];
+        $batchUpdates = [];
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $rowNumber++;
+            $totalProcessed++;
+
+            if (empty(array_filter($row))) continue; // Saltar filas vacías
+
+            $email = trim($row[$emailIndex] ?? '');
+
+            if (!$email) {
+                $errors[] = "Fila $rowNumber: Falta el email.";
+                continue;
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Fila $rowNumber: Email inválido: $email.";
+                continue;
+            }
+
+            try {
+                // Verifica si ya existe el contacto
+                $checkStmt->execute([$email]);
+                $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+                // Preparar datos para inserción/actualización
+                $contactData = [];
+                $customFields = [];
+
+                // Procesar cada columna del CSV
+                foreach ($header as $index => $columnName) {
+                    $value = isset($row[$index]) ? trim($row[$index]) : '';
+                    if ($value === '') continue;
+
+                    if (in_array($columnName, $standardFields)) {
+                        if ($columnName === 'status' || $columnName === 'estado') {
+                            $validStatuses = ['active', 'inactive', 'deleted', 'unsubscribed'];
+                            $mappedStatus = $this->mapStatus($value);
+                            if (in_array($mappedStatus, $validStatuses)) {
+                                if (!$existing) {
+                                    $contactData['status'] = $mappedStatus;
+                                }
+                            } else if (!$existing) {
+                                $contactData['status'] = 'active';
+                            }
+                        } else if ($columnName === 'tags') {
+                            if (!empty($value)) {
+                                $tagsArray = is_string($value) ? explode(',', $value) : [$value];
+                                $tagsArray = array_map('trim', $tagsArray);
+                                $contactData[$columnName] = json_encode($tagsArray);
+                            }
+                        } else {
+                            if (in_array($columnName, ['name', 'email'])) {
+                                $contactData[$columnName] = $value;
+                            } else {
+                                $customFields[$columnName] = $value;
+                            }
+                        }
+                    } else {
+                        $customFields[$columnName] = $value;
+                    }
+                }
+
+                if ($existing) {
+                    // Agregar a lote de actualizaciones
+                    $batchUpdates[] = [
+                        'id' => $existing['id'],
+                        'data' => $contactData,
+                        'custom_fields' => $customFields,
+                        'row' => $rowNumber
+                    ];
+                } else {
+                    // Agregar a lote de inserciones
+                    if (!isset($contactData['status'])) {
+                        $contactData['status'] = 'active';
+                    }
+
+                    $batchInserts[] = [
+                        'data' => $contactData,
+                        'custom_fields' => $customFields,
+                        'row' => $rowNumber
+                    ];
+                }
+
+                $currentBatch++;
+
+                // Procesar lote cuando se alcanza el tamaño o al final del archivo
+                if ($currentBatch >= $batchSize || feof($handle)) {
+                    $this->processBatch($pdo, $batchInserts, $batchUpdates, $listIds, $imported, $updated, $errors, $newContactIds, $allContactIds, $customFieldsStmt);
+
+                    // Commit periódico para evitar transacciones muy largas
+                    $pdo->commit();
+                    $pdo->beginTransaction();
+
+                    // Limpiar arrays y resetear contador
+                    $batchInserts = [];
+                    $batchUpdates = [];
+                    $currentBatch = 0;
+
+                    // Liberar memoria
+                    gc_collect_cycles();
+
+                    // Opcional: Enviar progreso al cliente (si usas AJAX)
+                    if ($totalProcessed % 5000 === 0) {
+                        // Aquí podrías enviar progreso vía websocket o session
+                        error_log("Procesados: $totalProcessed registros");
+                    }
+                }
+            } catch (Exception $e) {
+                $errors[] = "Fila $rowNumber: Error al procesar $email: " . $e->getMessage();
+            }
+        }
+
+        // Procesar último lote si queda algo
+        if (!empty($batchInserts) || !empty($batchUpdates)) {
+            $this->processBatch($pdo, $batchInserts, $batchUpdates, $listIds, $imported, $updated, $errors, $newContactIds, $allContactIds, $customFieldsStmt);
+        }
+
+        // Commit final
+        $pdo->commit();
+        $pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, true);
+
         fclose($handle);
+
+        // Asignar TODOS los contactos (nuevos y actualizados) a listas seleccionadas
+        if (!empty($listIds) && !empty($allContactIds)) {
+            $this->assignContactsToLists($pdo, $listIds, $allContactIds);
+        }
+
+        // Limpiar archivo temporal
         if (file_exists($cleanedFile)) {
             unlink($cleanedFile);
         }
-        $this->sendError(400, 'Archivo CSV vacío o formato inválido.');
+
+        $this->sendResponse([
+            'imported' => $imported,
+            'updated' => $updated,
+            'errors' => $errors,
+            'message' => "$imported contactos importados, $updated contactos actualizados correctamente"
+        ]);
     }
 
-    // Normalizar encabezados
-    $header = array_map(fn($col) => strtolower(trim($col)), $header);
-    $emailIndex = array_search('email', $header);
+    private function processBatch($pdo, $batchInserts, $batchUpdates, $listIds, &$imported, &$updated, &$errors, &$newContactIds, &$allContactIds, $customFieldsStmt)
+    {
+        // Procesar inserciones en lote
+        if (!empty($batchInserts)) {
+            $this->processBatchInserts($pdo, $batchInserts, $listIds, $imported, $errors, $newContactIds, $allContactIds);
+        }
 
-    if ($emailIndex === false) {
-        fclose($handle);
-        $this->sendError(400, "Falta la columna requerida: email");
+        // Procesar actualizaciones en lote
+        if (!empty($batchUpdates)) {
+            $this->processBatchUpdates($pdo, $batchUpdates, $updated, $errors, $customFieldsStmt, $allContactIds);
+        }
     }
 
-    // Definir campos estándar de la tabla contacts
-    $standardFields = ['name', 'email', 'status', 'tags'];
-    $rowNumber = 1;
-    $newContactIds = [];
-
-    // Preparar statements una sola vez (fuera del bucle)
-    $checkStmt = $pdo->prepare("SELECT id, status FROM contacts WHERE email = ?");
-    $updateStmt = null;
-    $insertStmt = null;
-    $customFieldsStmt = $pdo->prepare("SELECT custom_fields FROM contacts WHERE id = ?");
-
-    // Arrays para procesamiento por lotes
-    $batchInserts = [];
-    $batchUpdates = [];
-
-    while (($row = fgetcsv($handle)) !== false) {
-        $rowNumber++;
-        $totalProcessed++;
-        
-        if (empty(array_filter($row))) continue; // Saltar filas vacías
-
-        $email = trim($row[$emailIndex] ?? '');
-
-        if (!$email) {
-            $errors[] = "Fila $rowNumber: Falta el email.";
-            continue;
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "Fila $rowNumber: Email inválido: $email.";
-            continue;
-        }
+    private function processBatchInserts($pdo, $batchInserts, $listIds, &$imported, &$errors, &$newContactIds, &$allContactIds)
+    {
+        if (empty($batchInserts)) return;
 
         try {
-            // Verifica si ya existe el contacto
-            $checkStmt->execute([$email]);
-            $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            // Preparar campos para inserción masiva
+            $firstItem = $batchInserts[0];
+            $baseFields = array_keys($firstItem['data']);
 
-            // Preparar datos para inserción/actualización
-            $contactData = [];
-            $customFields = [];
+            // Agregar custom_fields si algún elemento lo tiene
+            $hasCustomFields = false;
+            foreach ($batchInserts as $item) {
+                if (!empty($item['custom_fields'])) {
+                    $hasCustomFields = true;
+                    break;
+                }
+            }
 
-            // Procesar cada columna del CSV
-            foreach ($header as $index => $columnName) {
-                $value = isset($row[$index]) ? trim($row[$index]) : '';
-                if ($value === '') continue;
+            if ($hasCustomFields) {
+                $baseFields[] = 'custom_fields';
+            }
 
-                if (in_array($columnName, $standardFields)) {
-                    if ($columnName === 'status' || $columnName === 'estado') {
-                        $validStatuses = ['active', 'inactive', 'deleted', 'unsubscribed'];
-                        $mappedStatus = $this->mapStatus($value);
-                        if (in_array($mappedStatus, $validStatuses)) {
-                            if (!$existing) {
-                                $contactData['status'] = $mappedStatus;
-                            }
-                        } else if (!$existing) {
-                            $contactData['status'] = 'active';
-                        }
-                    } else if ($columnName === 'tags') {
-                        if (!empty($value)) {
-                            $tagsArray = is_string($value) ? explode(',', $value) : [$value];
-                            $tagsArray = array_map('trim', $tagsArray);
-                            $contactData[$columnName] = json_encode($tagsArray);
-                        }
+            $placeholders = '(' . str_repeat('?,', count($baseFields) - 1) . '?)';
+            $sql = "INSERT INTO contacts (" . implode(', ', $baseFields) . ") VALUES " .
+                str_repeat($placeholders . ',', count($batchInserts) - 1) . $placeholders;
+
+            $stmt = $pdo->prepare($sql);
+            $values = [];
+
+            foreach ($batchInserts as $item) {
+                foreach ($baseFields as $field) {
+                    if ($field === 'custom_fields') {
+                        $values[] = !empty($item['custom_fields']) ? json_encode($item['custom_fields']) : null;
                     } else {
-                        if (in_array($columnName, ['name', 'email'])) {
-                            $contactData[$columnName] = $value;
-                        } else {
-                            $customFields[$columnName] = $value;
-                        }
+                        $values[] = $item['data'][$field] ?? null;
                     }
-                } else {
-                    $customFields[$columnName] = $value;
                 }
             }
 
-            if ($existing) {
-                // Agregar a lote de actualizaciones
-                $batchUpdates[] = [
-                    'id' => $existing['id'],
-                    'data' => $contactData,
-                    'custom_fields' => $customFields,
-                    'row' => $rowNumber
-                ];
-            } else {
-                // Agregar a lote de inserciones
-                if (!isset($contactData['status'])) {
-                    $contactData['status'] = 'active';
-                }
-                
-                $batchInserts[] = [
-                    'data' => $contactData,
-                    'custom_fields' => $customFields,
-                    'row' => $rowNumber
-                ];
+            $stmt->execute($values);
+
+            // Obtener IDs de los contactos insertados
+            $lastId = $pdo->lastInsertId();
+            for ($i = 0; $i < count($batchInserts); $i++) {
+                $contactId = $lastId + $i;
+                $newContactIds[] = $contactId;
+                $allContactIds[] = $contactId; // Agregar a la lista de todos los contactos
             }
 
-            $currentBatch++;
-
-            // Procesar lote cuando se alcanza el tamaño o al final del archivo
-            if ($currentBatch >= $batchSize || feof($handle)) {
-                $this->processBatch($pdo, $batchInserts, $batchUpdates, $listIds, $imported, $updated, $errors, $newContactIds, $customFieldsStmt);
-                
-                // Commit periódico para evitar transacciones muy largas
-                $pdo->commit();
-                $pdo->beginTransaction();
-                
-                // Limpiar arrays y resetear contador
-                $batchInserts = [];
-                $batchUpdates = [];
-                $currentBatch = 0;
-                
-                // Liberar memoria
-                gc_collect_cycles();
-                
-                // Opcional: Enviar progreso al cliente (si usas AJAX)
-                if ($totalProcessed % 5000 === 0) {
-                    // Aquí podrías enviar progreso vía websocket o session
-                    error_log("Procesados: $totalProcessed registros");
-                }
-            }
-
+            $imported += count($batchInserts);
         } catch (Exception $e) {
-            $errors[] = "Fila $rowNumber: Error al procesar $email: " . $e->getMessage();
-        }
-    }
-
-    // Procesar último lote si queda algo
-    if (!empty($batchInserts) || !empty($batchUpdates)) {
-        $this->processBatch($pdo, $batchInserts, $batchUpdates, $listIds, $imported, $updated, $errors, $newContactIds, $customFieldsStmt);
-    }
-
-    // Commit final
-    $pdo->commit();
-    $pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, true);
-
-    fclose($handle);
-
-    // Limpiar archivo temporal
-    if (file_exists($cleanedFile)) {
-        unlink($cleanedFile);
-    }
-
-    $this->sendResponse([
-        'imported' => $imported,
-        'updated' => $updated,
-        'errors' => $errors,
-        'message' => "$imported contactos importados, $updated contactos actualizados correctamente"
-    ]);
-}
-
-private function processBatch($pdo, $batchInserts, $batchUpdates, $listIds, &$imported, &$updated, &$errors, &$newContactIds, $customFieldsStmt)
-{
-    // Procesar inserciones en lote
-    if (!empty($batchInserts)) {
-        $this->processBatchInserts($pdo, $batchInserts, $listIds, $imported, $errors, $newContactIds);
-    }
-
-    // Procesar actualizaciones en lote
-    if (!empty($batchUpdates)) {
-        $this->processBatchUpdates($pdo, $batchUpdates, $updated, $errors, $customFieldsStmt);
-    }
-}
-
-private function processBatchInserts($pdo, $batchInserts, $listIds, &$imported, &$errors, &$newContactIds)
-{
-    if (empty($batchInserts)) return;
-
-    try {
-        // Preparar campos para inserción masiva
-        $firstItem = $batchInserts[0];
-        $baseFields = array_keys($firstItem['data']);
-        
-        // Agregar custom_fields si algún elemento lo tiene
-        $hasCustomFields = false;
-        foreach ($batchInserts as $item) {
-            if (!empty($item['custom_fields'])) {
-                $hasCustomFields = true;
-                break;
+            // Si falla el lote, procesar uno por uno
+            foreach ($batchInserts as $item) {
+                $this->processSingleInsert($pdo, $item, $imported, $errors, $newContactIds, $allContactIds);
             }
         }
-        
-        if ($hasCustomFields) {
-            $baseFields[] = 'custom_fields';
-        }
-
-        $placeholders = '(' . str_repeat('?,', count($baseFields) - 1) . '?)';
-        $sql = "INSERT INTO contacts (" . implode(', ', $baseFields) . ") VALUES " . 
-               str_repeat($placeholders . ',', count($batchInserts) - 1) . $placeholders;
-
-        $stmt = $pdo->prepare($sql);
-        $values = [];
-
-        foreach ($batchInserts as $item) {
-            foreach ($baseFields as $field) {
-                if ($field === 'custom_fields') {
-                    $values[] = !empty($item['custom_fields']) ? json_encode($item['custom_fields']) : null;
-                } else {
-                    $values[] = $item['data'][$field] ?? null;
-                }
-            }
-        }
-
-        $stmt->execute($values);
-        
-        // Obtener IDs de los contactos insertados
-        $lastId = $pdo->lastInsertId();
-        for ($i = 0; $i < count($batchInserts); $i++) {
-            $newContactIds[] = $lastId + $i;
-        }
-        
-        $imported += count($batchInserts);
-
-    } catch (Exception $e) {
-        // Si falla el lote, procesar uno por uno
-        foreach ($batchInserts as $item) {
-            $this->processSingleInsert($pdo, $item, $imported, $errors, $newContactIds);
-        }
     }
-}
 
-private function processSingleInsert($pdo, $item, &$imported, &$errors, &$newContactIds)
-{
-    try {
-        $insertFields = array_keys($item['data']);
-        $insertValues = array_values($item['data']);
-
-        if (!empty($item['custom_fields'])) {
-            $insertFields[] = 'custom_fields';
-            $insertValues[] = json_encode($item['custom_fields']);
-        }
-
-        $placeholders = str_repeat('?,', count($insertFields) - 1) . '?';
-        $sql = "INSERT INTO contacts (" . implode(', ', $insertFields) . ") VALUES ($placeholders)";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($insertValues);
-        
-        $newContactIds[] = $pdo->lastInsertId();
-        $imported++;
-
-    } catch (Exception $e) {
-        $errors[] = "Fila {$item['row']}: Error al insertar: " . $e->getMessage();
-    }
-}
-
-private function processBatchUpdates($pdo, $batchUpdates, &$updated, &$errors, $customFieldsStmt)
-{
-    foreach ($batchUpdates as $item) {
+    private function processSingleInsert($pdo, $item, &$imported, &$errors, &$newContactIds, &$allContactIds)
+    {
         try {
-            $updateFields = [];
-            $updateValues = [];
-
-            foreach ($item['data'] as $field => $value) {
-                if ($field !== 'status') {
-                    $updateFields[] = "$field = ?";
-                    $updateValues[] = $value;
-                }
-            }
+            $insertFields = array_keys($item['data']);
+            $insertValues = array_values($item['data']);
 
             if (!empty($item['custom_fields'])) {
-                $customFieldsStmt->execute([$item['id']]);
-                $existingCustomFields = $customFieldsStmt->fetchColumn();
-
-                $mergedCustomFields = [];
-                if ($existingCustomFields) {
-                    $mergedCustomFields = json_decode($existingCustomFields, true) ?: [];
-                }
-
-                $mergedCustomFields = array_merge($mergedCustomFields, $item['custom_fields']);
-                $updateFields[] = "custom_fields = ?";
-                $updateValues[] = json_encode($mergedCustomFields);
+                $insertFields[] = 'custom_fields';
+                $insertValues[] = json_encode($item['custom_fields']);
             }
 
-            if (!empty($updateFields)) {
-                $updateValues[] = $item['id'];
-                $sql = "UPDATE contacts SET " . implode(', ', $updateFields) . " WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($updateValues);
-                $updated++;
-            }
+            $placeholders = str_repeat('?,', count($insertFields) - 1) . '?';
+            $sql = "INSERT INTO contacts (" . implode(', ', $insertFields) . ") VALUES ($placeholders)";
 
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($insertValues);
+
+            $contactId = $pdo->lastInsertId();
+            $newContactIds[] = $contactId;
+            $allContactIds[] = $contactId; // Agregar a la lista de todos los contactos
+            $imported++;
         } catch (Exception $e) {
-            $errors[] = "Fila {$item['row']}: Error al actualizar: " . $e->getMessage();
+            $errors[] = "Fila {$item['row']}: Error al insertar: " . $e->getMessage();
         }
     }
-}
+
+    private function processBatchUpdates($pdo, $batchUpdates, &$updated, &$errors, $customFieldsStmt, &$allContactIds)
+    {
+        foreach ($batchUpdates as $item) {
+            try {
+                $updateFields = [];
+                $updateValues = [];
+
+                foreach ($item['data'] as $field => $value) {
+                    if ($field !== 'status') {
+                        $updateFields[] = "$field = ?";
+                        $updateValues[] = $value;
+                    }
+                }
+
+                if (!empty($item['custom_fields'])) {
+                    $customFieldsStmt->execute([$item['id']]);
+                    $existingCustomFields = $customFieldsStmt->fetchColumn();
+
+                    $mergedCustomFields = [];
+                    if ($existingCustomFields) {
+                        $mergedCustomFields = json_decode($existingCustomFields, true) ?: [];
+                    }
+
+                    $mergedCustomFields = array_merge($mergedCustomFields, $item['custom_fields']);
+                    $updateFields[] = "custom_fields = ?";
+                    $updateValues[] = json_encode($mergedCustomFields);
+                }
+
+                if (!empty($updateFields)) {
+                    $updateValues[] = $item['id'];
+                    $sql = "UPDATE contacts SET " . implode(', ', $updateFields) . " WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($updateValues);
+                    $updated++;
+
+                    // Agregar el ID del contacto actualizado a la lista de todos los contactos
+                    $allContactIds[] = $item['id'];
+                }
+            } catch (Exception $e) {
+                $errors[] = "Fila {$item['row']}: Error al actualizar: " . $e->getMessage();
+            }
+        }
+    }
+
+    // Nuevo método para asignar contactos a listas de forma optimizada
+    private function assignContactsToLists($pdo, $listIds, $allContactIds)
+    {
+        if (empty($listIds) || empty($allContactIds)) return;
+
+        try {
+            // Verificar que las listas existen
+            $validListIds = [];
+            $listCheckStmt = $pdo->prepare("SELECT id FROM contact_lists WHERE id = ?");
+
+            foreach ($listIds as $listId) {
+                $listCheckStmt->execute([$listId]);
+                if ($listCheckStmt->fetch()) {
+                    $validListIds[] = $listId;
+                }
+            }
+
+            if (empty($validListIds)) return;
+
+            // Preparar para inserción masiva
+            $insertValues = [];
+            $placeholders = [];
+
+            foreach ($validListIds as $listId) {
+                foreach ($allContactIds as $contactId) {
+                    $insertValues[] = $listId;
+                    $insertValues[] = $contactId;
+                    $placeholders[] = '(?, ?)';
+                }
+            }
+
+            if (!empty($placeholders)) {
+                $sql = "INSERT IGNORE INTO contact_list_members (list_id, contact_id) VALUES " .
+                    implode(', ', $placeholders);
+
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($insertValues);
+            }
+        } catch (Exception $e) {
+            // Log error but don't stop the process
+            error_log("Error asignando contactos a listas: " . $e->getMessage());
+        }
+    }
 
     // Función para limpiar archivo CSV eliminando todas las comillas dobles
     private function cleanCSVFile($filePath)
@@ -1397,7 +1450,7 @@ private function processBatchUpdates($pdo, $batchUpdates, &$updated, &$errors, $
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            $this->sendResponse( 'Campaña pausada correctamente.');
+            $this->sendResponse('Campaña pausada correctamente.');
         } else {
             $this->sendError(404, 'No se pudo pausar la campaña. Puede que ya no esté en estado de envío.');
         }
@@ -1434,7 +1487,7 @@ private function processBatchUpdates($pdo, $batchUpdates, &$updated, &$errors, $
         $pdo = $this->getConnection();
         // Se pueden cancelar campañas en envío o en pausa
         $stmt = $pdo->prepare("UPDATE campaigns SET status = 'canceled' WHERE id = ? AND status IN ('sending', 'paused')");
-        $stmt->execute([$id] );
+        $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
             $this->sendResponse('Campaña cancelada correctamente.');
@@ -1482,8 +1535,8 @@ private function processBatchUpdates($pdo, $batchUpdates, &$updated, &$errors, $
 
             // 2. Incrusta las imágenes desde tu ruta local usando __DIR__
             //    Esto asegura que la ruta siempre sea correcta sin importar desde dónde se ejecute el script.
-           // $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
-           // $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
+            // $mail->addEmbeddedImage(__DIR__ . '/uploads/header.jpg', 'header_cid');
+            // $mail->addEmbeddedImage(__DIR__ . '/uploads/about.png', 'about_cid');
             // $mail->addEmbeddedImage(__DIR__ . '/uploads/bg_1.jpg', 'counter_cid');
 
             // --- CONTENIDO DEL CORREO ---
