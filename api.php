@@ -1692,7 +1692,7 @@ class EmailMarketingAPI
 
         // --- Etapa 4: Limpieza final ---
         // Remover variables no resueltas (opcional)
-        // $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
+         $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
 
         return $content;
     }
