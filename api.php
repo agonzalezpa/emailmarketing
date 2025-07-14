@@ -1630,7 +1630,7 @@ class EmailMarketingAPI
      * @param array $variables Un array asociativo con todas las variables disponibles (ej: '{{name}}' => 'Juan').
      * @return string El contenido procesado.
      */
-    function parseDynamicTemplate($content, $variables)
+    private function parseDynamicTemplate($content, $variables)
     {
         // --- Etapa 1: Reemplazo de variables simples como {{name}} ---
         $content = str_replace(array_keys($variables), array_values($variables), $content);
@@ -1674,9 +1674,9 @@ class EmailMarketingAPI
             }
 
             if ($isConditionMet) {
-                return parseDynamicTemplate($ifContent, $variables);
+                return $this->parseDynamicTemplate($ifContent, $variables);
             } else {
-                return parseDynamicTemplate($elseContent, $variables);
+                return $this->parseDynamicTemplate($elseContent, $variables);
             }
         }, $content);
 
