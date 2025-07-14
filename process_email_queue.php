@@ -6,6 +6,7 @@ define('YOUR_DOMAIN', 'marketing.dom0125.com');
 
 // --- CARGA DE DEPENDENCIAS ---
 require_once 'vendor/autoload.php';
+require_once 'WebsiteChecker.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
@@ -300,7 +301,7 @@ try {
                     $variables['{{sitio_web_valido}}'] = "SI";
                 }
 
-                
+
                 $personalizedSubject = parseDynamicTemplate($recipient['subject'], $variables);
                 $personalizedHtml = parseDynamicTemplate($recipient['html_content'], $variables);
 
