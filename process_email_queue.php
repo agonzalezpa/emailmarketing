@@ -97,7 +97,7 @@ function replaceVariables($content, $variables)
  * @param array $variables Un array asociativo con todas las variables disponibles (ej: '{{name}}' => 'Juan').
  * @return string El contenido procesado.
  */
-private function parseDynamicTemplate($content, $variables)
+ function parseDynamicTemplate($content, $variables)
     {
         // --- ETAPA 1: PROCESAR LA LÓGICA CONDICIONAL PRIMERO ---
         // Se procesan los bloques [SI...] de forma recursiva para resolver la estructura.
