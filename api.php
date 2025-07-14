@@ -1593,13 +1593,13 @@ class EmailMarketingAPI
                 '{{name}}'  => isset($data['name']) ? $data['name'] : 'Odelkys',
                 '{{email}}' => isset($data['email']) ? $data['email'] : $data['test_email'],
                 '{{TRACK_LINK}}' => "https://dom0125.com",
-                 '{{giro}}' => "Venta de dulces y golosinas",
-                  '{{sitio_web}}' => "https://dom0125.com",
-                   '{{nombre_comercial}}' => "Golosinas odelkys",
-                    '{{departamento}}' => "Lima",
-                
+                '{{giro}}' => "Venta de dulces y golosinas",
+                '{{sitio_web}}' => "https://dom0125.com",
+                '{{nombre_comercial}}' => "Golosinas odelkys",
+                '{{departamento}}' => "Lima"
+
             ];
-           
+
 
             // $personalizedSubject = str_replace(array_keys($variables), array_values($variables), $data['subject']);
             $personalizedSubject = $this->parseDynamicTemplate($data['subject'], $variables);
