@@ -10,6 +10,7 @@ require_once 'vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
+use WebsiteChecker;
 
 // --- CREDENCIALES DE BASE DE DATOS (centralizadas para reutilización) ---
 define('DB_HOST', 'localhost');
@@ -98,20 +99,18 @@ function replaceVariables($content, $variables)
 function parseDynamicTemplate($content, $variables)
 {
     // --- Etapa 1: Reemplazo de variables simples como {{name}} ---
-    // Esto asegura que las variables dentro de los bloques SI/SINO se resuelvan primero.
     $content = str_replace(array_keys($variables), array_values($variables), $content);
 
     // --- Etapa 2: Procesamiento de bloques condicionales [SI...]...[FIN SI] ---
-    $pattern = '/\[SI\s+(.*?)\s*\](.*?)(\[SINO\](.*?)\[FIN\s+SI\]|\s*\[FIN\s+SI\])/s';
+    $pattern = '/\[SI\s+(.*?)\s*\](.*?)(\[SINO\](.*?))?\s*\[FIN\s+SI\]/s';
 
-    // Usamos preg_replace_callback para evaluar cada bloque condicional que encuentre
     $content = preg_replace_callback($pattern, function ($matches) use ($variables) {
         $condition = trim($matches[1]);
         $ifContent = $matches[2];
         $elseContent = isset($matches[4]) ? $matches[4] : '';
 
         $parts = explode(' ', $condition, 3);
-        $key = '{{' . $parts[0] . '}}'; // La clave de la variable, ej: {{cargo}}
+        $key = '{{' . $parts[0] . '}}';
         $operator = isset($parts[1]) ? strtoupper($parts[1]) : 'EXISTE';
         $value = isset($parts[2]) ? $parts[2] : null;
 
@@ -119,49 +118,50 @@ function parseDynamicTemplate($content, $variables)
 
         switch ($operator) {
             case 'EXISTE':
-                $isConditionMet = isset($variables[$key]) && !empty($variables[$key]);
+                $isConditionMet = isset($variables[$key]) && !empty(trim($variables[$key]));
                 break;
-            case 'NO': // Para [SI NOMBRE NO EXISTE]
-                $isConditionMet = !isset($variables[$key]) || empty($variables[$key]);
+            case 'NO':
+                if (isset($parts[2]) && strtoupper($parts[2]) === 'EXISTE') {
+                    $isConditionMet = !isset($variables[$key]) || empty(trim($variables[$key]));
+                } else {
+                    $isConditionMet = !isset($variables[$key]) || empty(trim($variables[$key]));
+                }
                 break;
             case '=':
-                $isConditionMet = isset($variables[$key]) && strtolower($variables[$key]) == strtolower($value);
+            case '==':
+                $isConditionMet = isset($variables[$key]) && strtolower(trim($variables[$key])) == strtolower($value);
+                break;
+            case '!=':
+                $isConditionMet = !isset($variables[$key]) || strtolower(trim($variables[$key])) != strtolower($value);
+                break;
+            case 'CONTIENE':
+                $isConditionMet = isset($variables[$key]) && stripos($variables[$key], $value) !== false;
                 break;
         }
 
-        // Si la condición se cumple, procesamos el contenido del "IF"
         if ($isConditionMet) {
-            // Llamada recursiva para procesar bloques anidados dentro del contenido del IF
             return parseDynamicTemplate($ifContent, $variables);
         } else {
-            // Si no, procesamos el contenido del "ELSE"
             return parseDynamicTemplate($elseContent, $variables);
         }
     }, $content);
 
-    // --- Etapa 3: Procesamiento de género [SI SEXO=...] ---
-    // Esto se hace después para ajustar el texto ya elegido por los condicionales.
+    // --- Etapa 3: Procesamiento de género [GENDER:masculino|femenino] ---
     $genderKey = '{{sexo}}';
-    $gender = isset($variables[$genderKey]) ? strtolower($variables[$genderKey]) : 'masculino'; // Masculino por defecto
+    $gender = isset($variables[$genderKey]) ? strtolower(trim($variables[$genderKey])) : 'masculino';
 
-    $content = preg_replace_callback('/\[GENDER:([a-zA-Z]+)\|([a-zA-Z]+)\]/', function ($matches) use ($gender) {
+    $content = preg_replace_callback('/\[GENDER:([^|]+)\|([^]]+)\]/', function ($matches) use ($gender) {
         $masculine = $matches[1];
         $feminine = $matches[2];
         return ($gender == 'femenino') ? $feminine : $masculine;
     }, $content);
 
-    // Simplificamos la sintaxis para terminaciones o/a
-    $content = preg_replace_callback('/\[GENDER:o\|a\]/', function ($matches) use ($gender) {
-        return ($gender == 'femenino') ? 'a' : 'o';
-    }, $content);
-
-
-    // --- Etapa 4: Limpieza final de cualquier placeholder que no se haya resuelto ---
-    // $content = preg_replace('/\{\{[^}]+\}\}/', '', $content); // Opcional: puedes eliminar esta línea si prefieres ver los errores.
+    // --- Etapa 4: Limpieza final ---
+    // Remover variables no resueltas (opcional)
+    // $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
 
     return $content;
 }
-
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {
     file_put_contents(__DIR__ . '/logs/email_cron.log', "[" . date('Y-m-d H:i:s') . "] Cron ejecutandose\n", FILE_APPEND);
@@ -262,6 +262,7 @@ try {
         $url_to_track = 'https://dom0125.com/schedule-meeting.html';
         $encoded_url_to_track = base64_encode($url_to_track);
         $base_tracking_url = 'https://marketing.dom0125.com/track_click.php';
+        $checker = new WebsiteChecker(); //comprobar si las paginas webs de los clientes existen o no
 
         // --- BUCLE DE ENVÍO POR CAMPAÑA ---
         foreach ($recipients as $recipient) {
@@ -270,6 +271,7 @@ try {
 
                 $params = '?campaign_id=' . $campaignId . '&contact_id=' . $recipient['contact_id'];
                 $tracking_link = $base_tracking_url . $params . '&redirect_url=' . urlencode($encoded_url_to_track);
+               
 
                 // Reemplazo de variables personalizadas en asunto y cuerpo
                 $variables = [
@@ -278,7 +280,10 @@ try {
                     '{{campaign_id}}' => $campaignId,
                     '{{contact_id}}' =>  $recipient['contact_id'],
                     '{{TRACK_LINK}}' => $tracking_link,
+                    
                 ];
+
+
 
                 // Decodificar custom_fields del contacto actual
                 if (!empty($recipient['custom_fields'])) {
@@ -290,10 +295,14 @@ try {
                         }
                     }
                 }
-                $personalizedSubject = replaceVariables($recipient['subject'], $variables);
-                $personalizedHtml = replaceVariables($recipient['html_content'], $variables);
-                //$personalizedSubject = str_replace(array_keys($variables), array_values($variables), $recipient['subject']);
-                //$personalizedHtml = str_replace(array_keys($variables), array_values($variables), $recipient['html_content']);
+               
+                if (!empty($variables['sitio_web']) && $checker->checkWebsite($variables['sitio_web'])['exists']) {                    
+                    $variables['{{sitio_web_valido}}'] = "SI";
+                }
+
+                
+                $personalizedSubject = parseDynamicTemplate($recipient['subject'], $variables);
+                $personalizedHtml = parseDynamicTemplate($recipient['html_content'], $variables);
 
                 // Determinar archivo adjunto de la campaña
                 $attachmentPath = null;
@@ -306,11 +315,6 @@ try {
                         file_put_contents(__DIR__ . '/logs/email_cron.log', "Archivo adjunto no encontrado para campaña $campaignId: {$recipient['file_attached']}\n", FILE_APPEND);
                     }
                 }
-
-
-                // $attachmentPath = __DIR__ . '/precios_base.pdf';
-                //$trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '" width="1" height="1" style="display:none;"/>';
-                // $finalHtmlContent = $personalizedHtml . $trackingPixel;
 
                 $timestamp = time();
                 $trackingPixel = '<img src="https://' . YOUR_DOMAIN . '/track/open/' . $recipient['campaign_id'] . '/' . $recipient['contact_id'] . '?t=' . $timestamp . '" width="1" height="1" style="display:none;"/>';
@@ -325,7 +329,6 @@ try {
                     $updateStmt->execute([$emailSent['error'], $recipient['id']]);
                 }
                 $totalProcesados++;
-
                 $loopPdo = null;
             } catch (PDOException $e) {
                 $errorMessage = "Error de BD procesando destinatario ID {$recipient['id']}: " . $e->getMessage();
