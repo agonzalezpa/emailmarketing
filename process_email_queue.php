@@ -299,7 +299,7 @@ try {
                     }
                 }
                
-                if (!empty($variables['sitio_web']) && $checker->checkWebsite($variables['sitio_web'])['exists']) {                    
+                if (!empty($variables['sitio_web']) && $checker->checkWebsite($variables['sitio_web'])['status_code']== 200) {                    
                     $variables['{{sitio_web_valido}}'] = "SI";
                 }
 
