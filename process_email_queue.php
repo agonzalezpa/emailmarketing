@@ -186,31 +186,43 @@ function evaluateCondition($condition, $variables)
     return false;
 }
 
-function sitioWebExiste($url) {
-    // Valida que la URL tenga un formato básico correcto.
+function verificarSitioWeb(string $url): bool
+{
+    // 1. Validar el formato de la URL
     if (!filter_var($url, FILTER_VALIDATE_URL)) {
         return false;
     }
 
-    // Obtiene las cabeceras del sitio web.
-    // El @ suprime los warnings si la URL no es válida o el host no se encuentra.
-    $headers = @get_headers($url);
+    $curl = curl_init($url);
 
-    // Si $headers es false, el host no pudo ser encontrado.
-    // Si no es un array, algo salió mal.
-    if (!$headers || !is_array($headers)) {
+    // 2. Configurar opciones de cURL para máxima compatibilidad y eficiencia
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,      // No imprimir la respuesta, devolverla como string
+        CURLOPT_NOBODY         => true,      // Pedir solo las cabeceras, no el cuerpo (más rápido)
+        CURLOPT_FOLLOWLOCATION => true,      // Seguir cualquier redirección (ej. http a https)
+        CURLOPT_CONNECTTIMEOUT => 10,        // Tiempo de espera para la conexión en segundos
+        CURLOPT_TIMEOUT        => 15,        // Tiempo total de la operación en segundos
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36', // Simular un navegador
+        CURLOPT_SSL_VERIFYPEER => true,       // Verificar el certificado SSL del sitio
+        CURLOPT_SSL_VERIFYHOST => 2,         // Verificar que el nombre del certificado coincida con el host
+    ]);
+
+    // Ejecutar la petición
+    curl_exec($curl);
+
+    // 3. Verificar si hubo un error a nivel de cURL (ej. no se puede resolver el dominio)
+    if (curl_errno($curl)) {
+        curl_close($curl);
         return false;
     }
 
-    // Busca un código de estado HTTP que indique éxito (2xx) o redirección (3xx).
-    // "HTTP/1.1 200 OK", "HTTP/1.1 301 Moved Permanently", etc.
-    // Usamos substr() para verificar si la primera línea de la cabecera contiene "HTTP/"
-    // seguido de un código de estado válido.
-    if (strpos($headers[0], '200') !== false || strpos($headers[0], '301') !== false || strpos($headers[0], '302') !== false) {
-        return true;
-    }
+    // 4. Obtener el código de estado HTTP de la respuesta
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-    return false;
+    curl_close($curl);
+
+    // 5. Un sitio se considera "existente" si responde con un código 2xx (Éxito) o 3xx (Redirección)
+    return ($http_code >= 200 && $http_code < 400);
 }
 
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
@@ -348,7 +360,7 @@ try {
                 }
 
                 if (!empty($variables['sitio_web'])) {
-                    if (sitioWebExiste($variables['sitio_web'])) { // Esto incluye 2xx y 3xx
+                    if (verificarSitioWeb($variables['sitio_web'])) { // Esto incluye 2xx y 3xx
                         $variables['{{sitio_web_valido}}'] = "SI";
                     }
                 }
