@@ -1,12 +1,31 @@
-
 <?php
- class WebsiteChecker {
+class WebsiteChecker {
     private $cacheFile;
     private $cacheDuration;
     
-    public function __construct($cacheFile = __DIR__ .'/logs/website_cache.log', $cacheDays = 15) {
+    public function __construct($cacheFile = null, $cacheDays = 15) {
+        // Si no se especifica archivo, usar directorio actual
+        if ($cacheFile === null) {
+            $cacheFile = __DIR__ . '/website_cache.log';
+        }
+        
         $this->cacheFile = $cacheFile;
-        $this->cacheDuration = $cacheDays * 24 * 60 * 60; // Convertir días a segundos
+        $this->cacheDuration = $cacheDays * 24 * 60 * 60;
+        
+        // Crear directorio si no existe
+        $this->ensureDirectoryExists();
+    }
+    
+    /**
+     * Asegura que el directorio para el archivo de caché existe
+     */
+    private function ensureDirectoryExists() {
+        $directory = dirname($this->cacheFile);
+        if (!is_dir($directory)) {
+            if (!mkdir($directory, 0755, true)) {
+                error_log("No se pudo crear el directorio: $directory");
+            }
+        }
     }
     
     /**
@@ -58,7 +77,11 @@
             return null;
         }
         
-        $cacheData = file_get_contents($this->cacheFile);
+        $cacheData = @file_get_contents($this->cacheFile);
+        if ($cacheData === false) {
+            return null;
+        }
+        
         $lines = explode("\n", $cacheData);
         
         foreach ($lines as $line) {
@@ -89,9 +112,11 @@
             CURLOPT_TIMEOUT => 30,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             CURLOPT_NOBODY => true, // Solo HEAD request para ser más eficiente
-            CURLOPT_HEADER => true
+            CURLOPT_HEADER => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1
         ]);
         
         $response = curl_exec($ch);
@@ -109,6 +134,7 @@
             ];
         }
         
+        // Considerar exitosos los códigos 2xx y 3xx
         $exists = ($httpCode >= 200 && $httpCode < 400);
         $message = $this->getStatusMessage($httpCode);
         
@@ -136,12 +162,14 @@
         // Leer caché existente
         $existingCache = [];
         if (file_exists($this->cacheFile)) {
-            $lines = file($this->cacheFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                $data = json_decode($line, true);
-                if ($data && $data['url'] !== $url) {
-                    // Mantener solo entradas que no sean del mismo URL
-                    $existingCache[] = $line;
+            $lines = @file($this->cacheFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if ($lines !== false) {
+                foreach ($lines as $line) {
+                    $data = json_decode($line, true);
+                    if ($data && $data['url'] !== $url) {
+                        // Mantener solo entradas que no sean del mismo URL
+                        $existingCache[] = $line;
+                    }
                 }
             }
         }
@@ -150,7 +178,10 @@
         $existingCache[] = json_encode($cacheEntry);
         
         // Escribir todo el caché
-        file_put_contents($this->cacheFile, implode("\n", $existingCache) . "\n");
+        $result = @file_put_contents($this->cacheFile, implode("\n", $existingCache) . "\n", LOCK_EX);
+        if ($result === false) {
+            error_log("No se pudo escribir en el archivo de caché: " . $this->cacheFile);
+        }
     }
     
     /**
@@ -161,9 +192,11 @@
             200 => 'OK - Sitio web accesible',
             301 => 'Moved Permanently - Sitio redirigido',
             302 => 'Found - Sitio redirigido temporalmente',
+            403 => 'Forbidden - Acceso denegado',
             404 => 'Not Found - Sitio no encontrado',
             500 => 'Internal Server Error - Error del servidor',
-            503 => 'Service Unavailable - Servicio no disponible'
+            503 => 'Service Unavailable - Servicio no disponible',
+            0 => 'No response - Sin respuesta del servidor'
         ];
         
         return isset($messages[$code]) ? $messages[$code] : "Código de estado: $code";
@@ -177,7 +210,11 @@
             return;
         }
         
-        $lines = file($this->cacheFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $lines = @file($this->cacheFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            return;
+        }
+        
         $validLines = [];
         
         foreach ($lines as $line) {
@@ -187,7 +224,7 @@
             }
         }
         
-        file_put_contents($this->cacheFile, implode("\n", $validLines) . "\n");
+        @file_put_contents($this->cacheFile, implode("\n", $validLines) . "\n", LOCK_EX);
     }
     
     /**
@@ -198,7 +235,11 @@
             return ['total' => 0, 'entries' => []];
         }
         
-        $lines = file($this->cacheFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $lines = @file($this->cacheFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            return ['total' => 0, 'entries' => []];
+        }
+        
         $entries = [];
         
         foreach ($lines as $line) {
@@ -209,5 +250,13 @@
         }
         
         return ['total' => count($entries), 'entries' => $entries];
+    }
+    
+    /**
+     * Verifica si un sitio web está "activo" (códigos 2xx y 3xx)
+     */
+    public function isWebsiteActive($url) {
+        $result = $this->checkWebsite($url);
+        return $result['exists']; // Ya considera códigos 2xx y 3xx como exitosos
     }
 }

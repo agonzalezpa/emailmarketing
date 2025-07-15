@@ -1699,12 +1699,6 @@ class EmailMarketingAPI
         return $content;
     }
 
-
-
-
-
-
-
     //Crea y pone la campaña en estado enviandose para que el CRON envie poco a poco los 
     //correos y evitar que se consideren spam o se bloquee el envio cuando son miles de correos
     private function handleSendCampaign($method)
