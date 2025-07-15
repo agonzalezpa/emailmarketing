@@ -99,50 +99,13 @@ function replaceVariables($content, $variables)
  */
 function parseDynamicTemplate($content, $variables)
 {
-    // --- ETAPA 1: PROCESAR LA LÓGICA CONDICIONAL PRIMERO ---
-    // Se procesan los bloques [SI...] de forma recursiva para resolver la estructura.
-    $pattern = '/\[SI\s+(.*?)\s*\](.*?)(\[SINO\](.*?))?\s*\[FIN\s+SI\]/s';
+    // --- ETAPA 1: PROCESAR LA LÓGICA CONDICIONAL CON MEJOR MANEJO DE ANIDACIÓN ---
+    $maxIterations = 10; // Prevenir bucles infinitos
+    $iteration = 0;
 
-    // Usamos una iteración para resolver condiciones anidadas de forma segura
-    while (preg_match($pattern, $content)) {
-        $content = preg_replace_callback($pattern, function ($matches) use ($variables) {
-            $condition = trim($matches[1]);
-            $ifContent = $matches[2];
-            $elseContent = isset($matches[4]) ? $matches[4] : '';
-
-            $parts = explode(' ', $condition, 3);
-            $key = '{{' . $parts[0] . '}}';
-            $operator = isset($parts[1]) ? strtoupper($parts[1]) : 'EXISTE';
-            $value = isset($parts[2]) ? $parts[2] : null;
-
-            $isConditionMet = false;
-
-            // Lógica para evaluar la condición (sin cambios)
-            switch ($operator) {
-                case 'EXISTE':
-                    $isConditionMet = isset($variables[$key]) && !empty(trim($variables[$key]));
-                    break;
-                case 'NO':
-                    if (isset($parts[2]) && strtoupper($parts[2]) === 'EXISTE') {
-                        $isConditionMet = !isset($variables[$key]) || empty(trim($variables[$key]));
-                    }
-                    break;
-                case '=':
-                case '==':
-                    $isConditionMet = isset($variables[$key]) && strtolower(trim($variables[$key])) == strtolower($value);
-                    break;
-                case '!=':
-                    $isConditionMet = !isset($variables[$key]) || strtolower(trim($variables[$key])) != strtolower($value);
-                    break;
-                case 'CONTIENE':
-                    $isConditionMet = isset($variables[$key]) && stripos($variables[$key], $value) !== false;
-                    break;
-            }
-
-            // Devolvemos el bloque de texto correspondiente SIN procesar recursivamente aquí.
-            // El bucle while se encargará de las capas anidadas.
-            return $isConditionMet ? $ifContent : $elseContent;
-        }, $content);
+    while (preg_match('/\[SI\s+[^]]+\]/', $content) && $iteration < $maxIterations) {
+        $content = processConditionalBlocks($content, $variables);
+        $iteration++;
     }
 
     // --- ETAPA 2: PROCESAR GÉNERO ---
@@ -156,14 +119,65 @@ function parseDynamicTemplate($content, $variables)
     }, $content);
 
     // --- ETAPA 3: REEMPLAZAR VARIABLES SIMPLES AL FINAL ---
-    // Ahora que solo queda el texto correcto, reemplazamos las variables.
     $content = str_replace(array_keys($variables), array_values($variables), $content);
 
     // --- ETAPA 4: LIMPIEZA FINAL ---
-    // Opcional: Remover cualquier variable {{...}} que no tuviera valor.
     $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
 
+    // Limpiar espacios en blanco excesivos
+    $content = preg_replace('/\s+/', ' ', $content);
+    $content = trim($content);
+
     return $content;
+}
+
+function processConditionalBlocks($content, $variables)
+{
+    // Buscar bloques [SI...] más internos primero (procesamiento de adentro hacia afuera)
+    $pattern = '/\[SI\s+(.*?)\s*\]((?:(?!\[SI\s+)(?!\[FIN\s+SI\]).)*?)(?:\[SINO\]((?:(?!\[SI\s+)(?!\[FIN\s+SI\]).)*?))?\s*\[FIN\s+SI\]/s';
+
+    return preg_replace_callback($pattern, function ($matches) use ($variables) {
+        $condition = trim($matches[1]);
+        $ifContent = $matches[2];
+        $elseContent = isset($matches[3]) ? $matches[3] : '';
+
+        $isConditionMet = evaluateCondition($condition, $variables);
+
+        return $isConditionMet ? $ifContent : $elseContent;
+    }, $content);
+}
+
+function evaluateCondition($condition, $variables)
+{
+    $parts = explode(' ', $condition, 3);
+    $key = '{{' . $parts[0] . '}}';
+    $operator = isset($parts[1]) ? strtoupper($parts[1]) : 'EXISTE';
+    $value = isset($parts[2]) ? $parts[2] : null;
+
+    $isConditionMet = false;
+
+    switch ($operator) {
+        case 'EXISTE':
+            $isConditionMet = isset($variables[$key]) && !empty(trim($variables[$key]));
+            break;
+        case 'NO':
+            if (isset($parts[2]) && strtoupper($parts[2]) === 'EXISTE') {
+                $isConditionMet = !isset($variables[$key]) || empty(trim($variables[$key]));
+            }
+            break;
+        case '=':
+        case '==':
+            $isConditionMet = isset($variables[$key]) && strtolower(trim($variables[$key])) == strtolower($value);
+            break;
+        case '!=':
+            $isConditionMet = !isset($variables[$key]) || strtolower(trim($variables[$key])) != strtolower($value);
+            break;
+        case 'CONTIENE':
+            $isConditionMet = isset($variables[$key]) && stripos($variables[$key], $value) !== false;
+            break;
+    }
+
+    return $isConditionMet;
 }
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {
