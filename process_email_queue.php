@@ -186,7 +186,32 @@ function evaluateCondition($condition, $variables)
     return false;
 }
 
+function sitioWebExiste($url) {
+    // Valida que la URL tenga un formato básico correcto.
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        return false;
+    }
 
+    // Obtiene las cabeceras del sitio web.
+    // El @ suprime los warnings si la URL no es válida o el host no se encuentra.
+    $headers = @get_headers($url);
+
+    // Si $headers es false, el host no pudo ser encontrado.
+    // Si no es un array, algo salió mal.
+    if (!$headers || !is_array($headers)) {
+        return false;
+    }
+
+    // Busca un código de estado HTTP que indique éxito (2xx) o redirección (3xx).
+    // "HTTP/1.1 200 OK", "HTTP/1.1 301 Moved Permanently", etc.
+    // Usamos substr() para verificar si la primera línea de la cabecera contiene "HTTP/"
+    // seguido de un código de estado válido.
+    if (strpos($headers[0], '200') !== false || strpos($headers[0], '301') !== false || strpos($headers[0], '302') !== false) {
+        return true;
+    }
+
+    return false;
+}
 
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {
@@ -288,7 +313,7 @@ try {
         $url_to_track = 'https://dom0125.com/schedule-meeting.html';
         $encoded_url_to_track = base64_encode($url_to_track);
         $base_tracking_url = 'https://marketing.dom0125.com/track_click.php';
-        $checker = new WebsiteChecker(); //comprobar si las paginas webs de los clientes existen o no
+       // $checker = new WebsiteChecker(); //comprobar si las paginas webs de los clientes existen o no
 
         // --- BUCLE DE ENVÍO POR CAMPAÑA ---
         foreach ($recipients as $recipient) {
@@ -323,8 +348,7 @@ try {
                 }
 
                 if (!empty($variables['sitio_web'])) {
-                    $result = $checker->checkWebsite($variables['sitio_web']);
-                    if ($result['exists']) { // Esto incluye 2xx y 3xx
+                    if (sitioWebExiste($variables['sitio_web'])) { // Esto incluye 2xx y 3xx
                         $variables['{{sitio_web_valido}}'] = "SI";
                     }
                 }
