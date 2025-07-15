@@ -99,8 +99,8 @@ function replaceVariables($content, $variables)
  */
 function parseDynamicTemplate($content, $variables)
 {
-    // --- ETAPA 1: PROCESAR LA LÓGICA CONDICIONAL CON MEJOR MANEJO DE ANIDACIÓN ---
-    $maxIterations = 10; // Prevenir bucles infinitos
+    // --- ETAPA 1: PROCESAR LA LÓGICA CONDICIONAL ---
+    $maxIterations = 10;
     $iteration = 0;
 
     while (preg_match('/\[SI\s+[^]]+\]/', $content) && $iteration < $maxIterations) {
@@ -118,13 +118,11 @@ function parseDynamicTemplate($content, $variables)
         return ($gender == 'femenino') ? $feminine : $masculine;
     }, $content);
 
-    // --- ETAPA 3: REEMPLAZAR VARIABLES SIMPLES AL FINAL ---
+    // --- ETAPA 3: REEMPLAZAR VARIABLES SIMPLES ---
     $content = str_replace(array_keys($variables), array_values($variables), $content);
 
     // --- ETAPA 4: LIMPIEZA FINAL ---
     $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
-
-    // Limpiar espacios en blanco excesivos
     $content = preg_replace('/\s+/', ' ', $content);
     $content = trim($content);
 
@@ -133,8 +131,8 @@ function parseDynamicTemplate($content, $variables)
 
 function processConditionalBlocks($content, $variables)
 {
-    // Buscar bloques [SI...] más internos primero (procesamiento de adentro hacia afuera)
-    $pattern = '/\[SI\s+(.*?)\s*\]((?:(?!\[SI\s+)(?!\[FIN\s+SI\]).)*?)(?:\[SINO\]((?:(?!\[SI\s+)(?!\[FIN\s+SI\]).)*?))?\s*\[FIN\s+SI\]/s';
+    // Patrón mejorado para manejar estructura [SINO] [SI...] [FIN SI] [FIN SI]
+    $pattern = '/\[SI\s+(.*?)\s*\](.*?)(?:\[SINO\]\s*(.*?))?\s*\[FIN\s+SI\]/s';
 
     return preg_replace_callback($pattern, function ($matches) use ($variables) {
         $condition = trim($matches[1]);
@@ -143,8 +141,22 @@ function processConditionalBlocks($content, $variables)
 
         $isConditionMet = evaluateCondition($condition, $variables);
 
-        return $isConditionMet ? $ifContent : $elseContent;
+        if ($isConditionMet) {
+            return $ifContent;
+        } else {
+            // Procesar el contenido del ELSE, que puede contener más condiciones
+            return processNestedElseContent($elseContent, $variables);
+        }
     }, $content);
+}
+
+function processNestedElseContent($elseContent, $variables)
+{
+    // Si el contenido del ELSE tiene condiciones anidadas, procesarlas
+    if (preg_match('/\[SI\s+[^]]+\]/', $elseContent)) {
+        return processConditionalBlocks($elseContent, $variables);
+    }
+    return $elseContent;
 }
 
 function evaluateCondition($condition, $variables)
@@ -154,31 +166,28 @@ function evaluateCondition($condition, $variables)
     $operator = isset($parts[1]) ? strtoupper($parts[1]) : 'EXISTE';
     $value = isset($parts[2]) ? $parts[2] : null;
 
-    $isConditionMet = false;
-
     switch ($operator) {
         case 'EXISTE':
-            $isConditionMet = isset($variables[$key]) && !empty(trim($variables[$key]));
-            break;
+            return isset($variables[$key]) && !empty(trim($variables[$key]));
         case 'NO':
             if (isset($parts[2]) && strtoupper($parts[2]) === 'EXISTE') {
-                $isConditionMet = !isset($variables[$key]) || empty(trim($variables[$key]));
+                return !isset($variables[$key]) || empty(trim($variables[$key]));
             }
             break;
         case '=':
         case '==':
-            $isConditionMet = isset($variables[$key]) && strtolower(trim($variables[$key])) == strtolower($value);
-            break;
+            return isset($variables[$key]) && strtolower(trim($variables[$key])) == strtolower($value);
         case '!=':
-            $isConditionMet = !isset($variables[$key]) || strtolower(trim($variables[$key])) != strtolower($value);
-            break;
+            return !isset($variables[$key]) || strtolower(trim($variables[$key])) != strtolower($value);
         case 'CONTIENE':
-            $isConditionMet = isset($variables[$key]) && stripos($variables[$key], $value) !== false;
-            break;
+            return isset($variables[$key]) && stripos($variables[$key], $value) !== false;
     }
 
-    return $isConditionMet;
+    return false;
 }
+
+
+
 // --- EJECUCIÓN PRINCIPAL DEL CRON ---
 try {
     file_put_contents(__DIR__ . '/logs/email_cron.log', "[" . date('Y-m-d H:i:s') . "] Cron ejecutandose\n", FILE_APPEND);
