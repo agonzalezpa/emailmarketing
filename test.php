@@ -134,7 +134,7 @@ require_once 'sunat.php';
 use SunatScraper;
 // Función para Web Scraping SUNAT (método alternativo)
 $scraper = new SunatScraper();
-$resultado = $scraper->buscarPorRazonSocial("MAGUANA S.A.C.");
+$resultado = $scraper->buscarPorRazonSocial("KAM MANZANO CARLOS ALBERTO");
 
 if ($resultado['success']) {
     foreach ($resultado['data'] as $empresa) {
