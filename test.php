@@ -2,15 +2,15 @@
 <?php
 // Datos
 $token = 'apis-token-17175.SXA3pxft3bc1fZCd4fHPQ9Tf55JKUvxl';
-$apiperu= 'fe35ca952fa59aea0f7165287ba408e786307911146b9b6b82d758771df34650';
+$apiperu = 'fe35ca952fa59aea0f7165287ba408e786307911146b9b6b82d758771df34650';
 
 // Lista de RUCs predefinidos para consultar
 $rucs = [
     'RN AUTOBOUTIQUE Y ESTRUCTURAS METALICAS E.I.R.L',
     'ECOFERTILIZING SAC'
-//'20603516509',
-  //  '20131376503',
-   // '20153408191'
+    //'20603516509',
+    //  '20131376503',
+    // '20153408191'
 ];
 
 // Función para consultar un RUC
@@ -18,7 +18,7 @@ function consultarRUC($ruc, $token)
 {
     $curl = curl_init();
 
-  curl_setopt_array($curl, array(
+    curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://api.apis.net.pe/v2/sunat/ruc/full?numero=' . $ruc,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => 0,
@@ -34,7 +34,7 @@ function consultarRUC($ruc, $token)
     ));
 
     $response = curl_exec($curl);
-   // $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    // $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
     curl_close($curl);
 
@@ -42,26 +42,32 @@ function consultarRUC($ruc, $token)
 }
 
 // Función para API Perú
-function buscarEnApiPeru($nombre, $token) {
+function buscarEnApiPeru($nombre, $token)
+{
+    $params = json_encode(['nombre_o_razon_social' => $nombre]);
     $curl = curl_init();
-    
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://apiperu.pro/api/ruc/search?nombre=' . $nombre,
+    curl_setopt_array($curl, [
+        CURLOPT_URL => "https://apiperu.dev/api/ruc",
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTPHEADER => array(
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json'
-        ),
-    ));
-    
+        CURLOPT_CUSTOMREQUEST => "POST",
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_POSTFIELDS => $params,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Authorization: Bearer INGRESAR_TOKEN_AQUI'
+        ],
+    ]);
+
     $response = curl_exec($curl);
     $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $err = curl_error($curl);
     curl_close($curl);
-    
+
     return [
         'http_code' => $httpCode,
         'response' => $response,
+        'error' => $response,
         'data' => json_decode($response)
     ];
 }
@@ -75,9 +81,9 @@ foreach ($rucs as $ruc) {
 
     $resultado = buscarEnApiPeru($ruc, $apiperu);
     // Datos de empresas según padron reducido
-     echo "<p><strong>Código HTTP:</strong> " . $resultado['http_code'] . "</p>\n";
-   echo "<pre>" . json_encode($resultado['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE). "</pre>\n";
-    
+    echo "<p><strong>Código HTTP:</strong> " . $resultado['http_code'] . "</p>\n";
+    echo "<pre>" . json_encode($resultado['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>\n";
+    echo "<p><strong>Código HTTP:</strong> " . $resultado['error'] . "</p>\n";
     echo "<hr>\n";
 
     // Pausa breve para evitar saturar la API
