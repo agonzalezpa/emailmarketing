@@ -42,6 +42,7 @@ function consultarRUC($ruc, $token)
 }
 
 // Función para API Perú
+/*
 function buscarEnApiPeru($nombre, $token)
 {
     $params = json_encode(['nombre_o_razon_social' => $nombre]);
@@ -90,4 +91,52 @@ foreach ($rucs as $ruc) {
     sleep(1);
 }
 
-echo "<p><strong>Consulta completada para " . count($rucs) . " RUCs</strong></p>\n";
+echo "<p><strong>Consulta completada para " . count($rucs) . " RUCs</strong></p>\n";*/
+
+
+
+$url = 'https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/jcrS00Alias';
+
+// Datos POST que deseas enviar
+$data = [
+    'accion'    => 'consPorRazonSoc',
+    'razSoc'    => 'ORGANIZACION CASTRO BONILLA S.R.L.',
+    'nroRuc'    => '',
+    'nrodoc'    => '',
+    'token'     => '17jxhlx6vcrifn1gfz2wqlbz6tho2m01v9a2wkms5askgaleki3q',
+    'contexto'  => 'ti-it',
+    'modo'      => '1',
+    'search1'   => '',
+    'tipdoc'    => '1',
+    'search2'   => '',
+    'rbtnTipo'  => '3',
+    'search3'   => 'ORGANIZACION CASTRO BONILLA S.R.L.',
+    'codigo'    => ''
+];
+
+// Iniciar cURL
+$ch = curl_init($url);
+
+// Configurar opciones cURL
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+
+// Simular navegador para evitar bloqueo
+curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+
+// Para evitar problemas de SSL (solo si no tienes certificados configurados)
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+// Ejecutar solicitud
+$response = curl_exec($ch);
+
+// Comprobar errores
+if (curl_errno($ch)) {
+    echo 'Error en cURL: ' . curl_error($ch);
+} else {
+    echo $response;
+}
+
+// Cerrar cURL
+curl_close($ch);
