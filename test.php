@@ -56,10 +56,14 @@ function buscarEnApiPeru($nombre, $token) {
     ));
     
     $response = curl_exec($curl);
+    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
     curl_close($curl);
     
-    return $response;
-
+    return [
+        'http_code' => $httpCode,
+        'response' => $response,
+        'data' => json_decode($response)
+    ];
 }
 
 // Procesar cada RUC
@@ -71,8 +75,8 @@ foreach ($rucs as $ruc) {
 
     $resultado = buscarEnApiPeru($ruc, $apiperu);
     // Datos de empresas según padron reducido
-    $empresa = json_decode($resultado);
-    var_dump($empresa);
+     echo "<p><strong>Código HTTP:</strong> " . $resultado['http_code'] . "</p>\n";
+   echo "<pre>" . json_encode($resultado['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE). "</pre>\n";
     
     echo "<hr>\n";
 
