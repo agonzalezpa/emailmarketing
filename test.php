@@ -49,9 +49,9 @@ foreach ($rucs as $ruc) {
 
     $resultado = consultarRUC($ruc, $token);
     // Datos de empresas según padron reducido
-    $empresa = json_decode($response);
+    $empresa = json_decode($resultado);
     var_dump($empresa);
-
+    
     echo "<hr>\n";
 
     // Pausa breve para evitar saturar la API
@@ -59,4 +59,3 @@ foreach ($rucs as $ruc) {
 }
 
 echo "<p><strong>Consulta completada para " . count($rucs) . " RUCs</strong></p>\n";
-?>
