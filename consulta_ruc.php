@@ -5,11 +5,11 @@ $token = 'apis-token-17175.SXA3pxft3bc1fZCd4fHPQ9Tf55JKUvxl';
 
 // Lista de RUCs predefinidos para consultar
 $rucs = [
-    '20546030700',
-    '20100070970',
-    '20131312955',
-    '20543540171',
-    '20100017491'
+    '20190345344',
+    '20183995121',
+    '20603516509',
+    '20131376503',
+    '20153408191'
 ];
 
 // Función para consultar un RUC
