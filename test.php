@@ -142,5 +142,7 @@ if ($resultado['success']) {
         echo "Empresa: " . $empresa['razon_social'] . "\n";
         echo "Estado: " . $empresa['estado'] . "\n";
     }
+    $resultado2 = $scraper->buscarPorRuc($empresa['ruc']);
+    print_r($resultado2);
 }
 
