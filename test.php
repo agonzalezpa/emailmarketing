@@ -46,7 +46,7 @@ function buscarEnApiPeru($nombre, $token) {
     $curl = curl_init();
     
     curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://apiperu.pro/api/ruc/search?nombre=' . urlencode($nombre),
+        CURLOPT_URL => 'https://apiperu.pro/api/ruc/search?nombre=' . $nombre,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 30,
         CURLOPT_HTTPHEADER => array(
