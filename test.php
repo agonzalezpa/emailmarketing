@@ -100,17 +100,8 @@ $url = 'https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/jcrS00Alias';
 // Datos POST que deseas enviar
 $data = [
     'accion'    => 'consPorRazonSoc',
-    'razSoc'    => 'ORGANIZACION CASTRO BONILLA S.R.L.',
-    'nroRuc'    => '',
-    'nrodoc'    => '',    
-    'contexto'  => 'ti-it',
-    'modo'      => '1',
-    'search1'   => '',
-    'tipdoc'    => '1',
-    'search2'   => '',
-    'rbtnTipo'  => '3',
-    'search3'   => 'ORGANIZACION CASTRO BONILLA S.R.L.',
-    'codigo'    => ''
+    'razSoc'    => 'ORGANIZACION CASTRO BONILLA S.R.L.'
+    
 ];
 
 // Iniciar cURL
