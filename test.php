@@ -166,5 +166,5 @@ function buscarEnSunatScraping($nombre)
     ];
 }
 $resultado = buscarEnSunatScraping("AISLAMIENTO INKA S.A.C.");
-echo "<pre>" . json_encode($resultado['response'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "</pre>\n";
-echo "<p><strong>Código HTTP:</strong> " . $resultado['http_code'] . "</p>\n";
+print_r($resultado);
+
