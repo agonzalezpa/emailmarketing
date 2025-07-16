@@ -130,41 +130,17 @@ if (curl_errno($ch)) {
 
 // Cerrar cURL
 curl_close($ch);*/
-
+require_once 'sunat.php';
+use SunatScraper;
 // Función para Web Scraping SUNAT (método alternativo)
-function buscarEnSunatScraping($nombre)
-{
-    $curl = curl_init();
+$scraper = new SunatScraper();
+$resultado = $scraper->buscarPorRazonSocial("EMPRESA PERUVIAN & BUSINESS ANGELES S.A.C. - EPBA S.A.C");
 
-    // Simular búsqueda en SUNAT
-    $postData = http_build_query([
-        'accion' => 'consPorRazonSoc',
-        'razonSocial' => $nombre,
-        'tipoPersona' => 'J'
-    ]);
-
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/jcrS00Alias',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $postData,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTPHEADER => array(
-            'Content-Type: application/x-www-form-urlencoded',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ),
-    ));
-
-    $response = curl_exec($curl);
-    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
-
-    return [
-        'http_code' => $httpCode,
-        'response' => $response,
-        'data' => 'Requiere parseo HTML'
-    ];
+if ($resultado['success']) {
+    foreach ($resultado['data'] as $empresa) {
+        echo "RUC: " . $empresa['ruc'] . "\n";
+        echo "Empresa: " . $empresa['razon_social'] . "\n";
+        echo "Estado: " . $empresa['estado'] . "\n";
+    }
 }
-$resultado = buscarEnSunatScraping("AISLAMIENTO INKA S.A.C.");
-print_r($resultado);
 
