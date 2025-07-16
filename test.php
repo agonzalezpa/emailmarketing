@@ -100,7 +100,7 @@ $url = 'https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/jcrS00Alias';
 // Datos POST que deseas enviar
 $data = [
     'accion'    => 'consPorRazonSoc',
-    'razSoc'    => 'ORGANIZACION CASTRO BONILLA S.R.L.'
+    'razSoc'    => 'AISLAMIENTO INKA S.A.C.'
     
 ];
 
