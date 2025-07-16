@@ -2,14 +2,15 @@
 <?php
 // Datos
 $token = 'apis-token-17175.SXA3pxft3bc1fZCd4fHPQ9Tf55JKUvxl';
+$apiperu= 'fe35ca952fa59aea0f7165287ba408e786307911146b9b6b82d758771df34650';
 
 // Lista de RUCs predefinidos para consultar
 $rucs = [
-    '20190345344',
-    '20183995121',
-    '20603516509',
-    '20131376503',
-    '20153408191'
+    'RN AUTOBOUTIQUE Y ESTRUCTURAS METALICAS E.I.R.L',
+    'ECOFERTILIZING SAC'
+//'20603516509',
+  //  '20131376503',
+   // '20153408191'
 ];
 
 // Función para consultar un RUC
@@ -40,6 +41,27 @@ function consultarRUC($ruc, $token)
     return  $response;
 }
 
+// Función para API Perú
+function buscarEnApiPeru($nombre, $token) {
+    $curl = curl_init();
+    
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://apiperu.pro/api/ruc/search?nombre=' . urlencode($nombre),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => array(
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json'
+        ),
+    ));
+    
+    $response = curl_exec($curl);
+    curl_close($curl);
+    
+    return $response;
+
+}
+
 // Procesar cada RUC
 echo "<h2>Resultados de consultas RUC</h2>\n";
 echo "<hr>\n";
@@ -47,7 +69,7 @@ echo "<hr>\n";
 foreach ($rucs as $ruc) {
     echo "<h3>RUC: $ruc</h3>\n";
 
-    $resultado = consultarRUC($ruc, $token);
+    $resultado = buscarEnApiPeru($ruc, token: $apiperu);
     // Datos de empresas según padron reducido
     $empresa = json_decode($resultado);
     var_dump($empresa);
