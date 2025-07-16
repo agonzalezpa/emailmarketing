@@ -2,7 +2,7 @@
 <?php
 // Datos
 $token = 'apis-token-17175.SXA3pxft3bc1fZCd4fHPQ9Tf55JKUvxl';
-$apiperu = 'fe35ca952fa59aea0f7165287ba408e786307911146b9b6b82d758771df34650';
+$apiperu = '2076906695f742ab0a67d5934af452463b8adf8c1040a15db0d5e961e8b50c3d';
 
 // Lista de RUCs predefinidos para consultar
 $rucs = [
