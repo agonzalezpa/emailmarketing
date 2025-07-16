@@ -69,7 +69,7 @@ echo "<hr>\n";
 foreach ($rucs as $ruc) {
     echo "<h3>RUC: $ruc</h3>\n";
 
-    $resultado = buscarEnApiPeru($ruc, token: $apiperu);
+    $resultado = buscarEnApiPeru($ruc, $apiperu);
     // Datos de empresas según padron reducido
     $empresa = json_decode($resultado);
     var_dump($empresa);
