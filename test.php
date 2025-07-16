@@ -134,7 +134,7 @@ require_once 'sunat.php';
 use SunatScraper;
 // Función para Web Scraping SUNAT (método alternativo)
 $scraper = new SunatScraper();
-$resultado = $scraper->buscarPorRazonSocial("EMPRESA PERUVIAN & BUSINESS ANGELES S.A.C. - EPBA S.A.C");
+$resultado = $scraper->buscarPorRazonSocial("TROTAMUNDO TRAVEL S.A.C.");
 
 if ($resultado['success']) {
     foreach ($resultado['data'] as $empresa) {
