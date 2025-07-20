@@ -295,18 +295,7 @@ try {
             continue;
         }
 
-        try {
-            // Incrementar el tamaño de las tablas temporales en memoria
-            $pdo->exec("SET SESSION tmp_table_size = 32M");
-            $pdo->exec("SET SESSION max_heap_table_size = 32M");
-
-            // También puedes intentar usar SQL_BIG_RESULT para forzar uso de disco
-            // en lugar de memoria para consultas grandes
-        } catch (Exception $e) {
-            // Si no tienes permisos para cambiar estas configuraciones,
-            // simplemente continúa sin hacer nada
-            file_put_contents(__DIR__ . '/logs/email_cron.log', "No se pudieron optimizar las tablas temporales de la BD: " . $e->getMessage() . "\n", FILE_APPEND);
-        }
+      
 
         // 3. Obtén los destinatarios pendientes priorizando contactos verificados
         /* $stmt = $pdo->prepare("
@@ -336,7 +325,7 @@ try {
         WHERE cr.campaign_id = ?
           AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
           AND c.status = 'active'
-                LIMIT ?
+          LIMIT ?
     ");
         $stmt->execute([$campaignId, $batchLimit]);
         $recipients = $stmt->fetchAll();
