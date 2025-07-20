@@ -270,6 +270,9 @@ try {
         $batchLimit = $idealSentCount - $sentToday;
         $remainingForDay = $dailyLimit - $sentToday;
         $batchLimit = min($batchLimit, $remainingForDay);
+        if ($batchLimit > 100) {
+            $batchLimit = 100; // Limitar a 100 envíos por lote para evitar sobrecarga
+        }
 
         file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId (sender $senderId): enviados hoy $sentToday, ideal hasta ahora $idealSentCount, lote $batchLimit, límite diario $dailyLimit\n", FILE_APPEND);
 
@@ -277,9 +280,7 @@ try {
             file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId tiene ritmo correcto. Saltando.\n", FILE_APPEND);
             continue;
         }
-        if ($batchLimit > 100) {
-            $batchLimit = 100; // Limitar a 100 envíos por lote para evitar sobrecarga
-        }
+
 
         // Obtener el sender (con cache para evitar consultas repetidas)
         if (!isset($sendersCache[$senderId])) {
@@ -294,7 +295,18 @@ try {
             continue;
         }
 
+        try {
+            // Incrementar el tamaño de las tablas temporales en memoria
+            $pdo->exec("SET SESSION tmp_table_size = 32M");
+            $pdo->exec("SET SESSION max_heap_table_size = 32M");
 
+            // También puedes intentar usar SQL_BIG_RESULT para forzar uso de disco
+            // en lugar de memoria para consultas grandes
+        } catch (Exception $e) {
+            // Si no tienes permisos para cambiar estas configuraciones,
+            // simplemente continúa sin hacer nada
+            file_put_contents(__DIR__ . '/logs/email_cron.log', "No se pudieron optimizar las tablas temporales de la BD: " . $e->getMessage() . "\n", FILE_APPEND);
+        }
 
         // 3. Obtén los destinatarios pendientes priorizando contactos verificados
         /* $stmt = $pdo->prepare("
@@ -324,8 +336,7 @@ try {
         WHERE cr.campaign_id = ?
           AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
           AND c.status = 'active'
-        ORDER BY cr.id ASC
-        LIMIT ?
+                LIMIT ?
     ");
         $stmt->execute([$campaignId, $batchLimit]);
         $recipients = $stmt->fetchAll();
