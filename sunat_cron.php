@@ -98,7 +98,7 @@ class SunatCron
             SELECT c.id, c.name, c.email, c.custom_fields 
             FROM contacts c
             WHERE c.status = 'active' 
-            AND JSON_EXTRACT(c.custom_fields, '$.country') = 'Peru'
+            AND JSON_EXTRACT(c.custom_fields, '$.country') = 'peru'
             AND (
                 JSON_EXTRACT(c.custom_fields, '$.sunat_updated') IS NULL 
                 OR JSON_EXTRACT(c.custom_fields, '$.sunat_updated') = 0

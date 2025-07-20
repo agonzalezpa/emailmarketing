@@ -277,6 +277,9 @@ try {
             file_put_contents(__DIR__ . '/logs/email_cron.log', "Campaña $campaignId tiene ritmo correcto. Saltando.\n", FILE_APPEND);
             continue;
         }
+        if ($batchLimit > 100) {
+            $batchLimit = 100; // Limitar a 100 envíos por lote para evitar sobrecarga
+        }
 
         // Obtener el sender (con cache para evitar consultas repetidas)
         if (!isset($sendersCache[$senderId])) {
@@ -294,7 +297,7 @@ try {
 
 
         // 3. Obtén los destinatarios pendientes priorizando contactos verificados
-        $stmt = $pdo->prepare("
+        /* $stmt = $pdo->prepare("
     SELECT cr.*, c.email, c.name, c.custom_fields, cmp.subject, cmp.html_content, cmp.sender_id, cmp.file_attached
     FROM campaign_recipients cr
     JOIN contacts c ON cr.contact_id = c.id
@@ -311,8 +314,19 @@ try {
         END,
         cr.id ASC
     LIMIT ?
-");
+");*/
 
+        $stmt = $pdo->prepare("
+        SELECT cr.*, c.email, c.name, c.custom_fields, cmp.subject, cmp.html_content, cmp.sender_id, cmp.file_attached
+        FROM campaign_recipients cr
+        JOIN contacts c ON cr.contact_id = c.id
+        JOIN campaigns cmp ON cr.campaign_id = cmp.id
+        WHERE cr.campaign_id = ?
+          AND (cr.status = 'pending' OR (cr.status = 'failed' AND cr.retry_count < 3))
+          AND c.status = 'active'
+        ORDER BY cr.id ASC
+        LIMIT ?
+    ");
         $stmt->execute([$campaignId, $batchLimit]);
         $recipients = $stmt->fetchAll();
 
@@ -325,7 +339,7 @@ try {
         $url_to_track = 'https://dom0125.com/schedule-meeting.html';
         $encoded_url_to_track = base64_encode($url_to_track);
         $base_tracking_url = 'https://marketing.dom0125.com/track_click.php';
-       // $checker = new WebsiteChecker(); //comprobar si las paginas webs de los clientes existen o no
+        // $checker = new WebsiteChecker(); //comprobar si las paginas webs de los clientes existen o no
 
         // --- BUCLE DE ENVÍO POR CAMPAÑA ---
         foreach ($recipients as $recipient) {

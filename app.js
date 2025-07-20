@@ -613,7 +613,82 @@ class EmailMarketingApp {
         }
     }
 
-  
+    async loadCampaignsOLD() {
+        try {
+            const response = await this.apiRequest('campaigns');
+            // Validación mejorada de la respuesta
+            let campaigns;
+            if (response && response.data && Array.isArray(response.data)) {
+                campaigns = response.data;
+            } else if (response && Array.isArray(response)) {
+                // En caso de que la API devuelva directamente el array
+                campaigns = response;
+            } else {
+                // Si no hay datos válidos, usar array vacío
+                campaigns = [];
+                console.warn('Respuesta de API no tiene formato esperado:', response);
+            }
+
+            const campaignGrid = document.getElementById('campaigns-grid');
+
+            if (campaigns.length === 0) {
+                campaignGrid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-rocket"></i>
+                    <p>No hay campañas creadas</p>
+                    <button class="btn btn-outline" onclick="emailApp.openCampaignModal()">Crear Primera Campaña</button>
+                </div>
+            `;
+            } else {
+                campaignGrid.innerHTML = campaigns.map(campaign => `
+                <div class="card">
+                    <div style="padding: 1.5rem;">
+                        <h3>${campaign.name}</h3>
+                        <p><strong>Asunto:</strong> ${campaign.subject}</p>
+                        <p><strong>Remitente:</strong> ${campaign.sender_name || 'N/A'}</p>
+                        
+                        <!-- ESTADÍSTICAS DE ENVÍO MEJORADAS -->
+                        <p><strong>Intentos de Envío:</strong> ${campaign.total_attempts || 0} de ${campaign.total_recipients || 0} destinatarios</p>
+                        <p><strong>Enviados con Éxito:</strong> ${campaign.total_sent || 0} </p>
+                        
+                        <p><strong>Estado:</strong> ${campaign.status}</p>
+                        <p><strong>Inicio:</strong> ${campaign.sent_at ? new Date(campaign.sent_at).toLocaleDateString() : 'Pendiente'}</p>
+                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+                            <div>
+                                <strong>${campaign.open_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Apertura (${campaign.total_opened || 0})</small>
+                            </div>
+                            <div>
+                                <strong>${campaign.click_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Clicks (${campaign.total_clicked || 0})</small>
+                            </div>
+                            
+                            <!-- NUEVAS ESTADÍSTICAS AÑADIDAS -->
+                            <div>
+                                <strong>${campaign.bounce_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Rebotados (${campaign.total_bounced || 0})</small>
+                            </div>
+                            <div>
+                                <strong>${campaign.failure_rate || 0}%</strong>
+                                <small style="display: block; color: var(--text-secondary);">Fallidos (${campaign.total_failed || 0})</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            }
+        } catch (error) {
+            console.error("Error al cargar campañas:", error);
+            document.getElementById('campaigns-grid').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error al cargar campañas</p>
+                <button class="btn btn-outline" onclick="emailApp.loadCampaigns()">Reintentar</button>
+            </div>
+        `;
+        }
+    }
     async loadCampaigns() {
         try {
             const response = await this.apiRequest('campaigns');

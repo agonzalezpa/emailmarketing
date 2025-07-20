@@ -34,7 +34,7 @@ class SunatPriorityConfig {
                 // Ejemplo: ["empresa@ejemplo.com", "contacto@importante.com"]
             ],
             'daily_limit' => 150,
-            'priority_percentage' => 100, // 100% para prioritarios, 0% para regulares
+            'priority_percentage' =>70, // 70% para prioritarios, 30% para regulares
             'updated_at' => date('Y-m-d H:i:s')
         ];
         
