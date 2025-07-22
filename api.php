@@ -100,9 +100,9 @@ class EmailMarketingAPI
                 case 'campaigns':
                     $this->handleCampaigns($method, $id);
                     break;
-                case 'templates':
+               /* case 'templates':
                     $this->handleTemplates($method, $id);
-                    break;
+                    break;*/
                 case 'send-test':
                     $this->handleSendTest();
                     break;
@@ -278,7 +278,7 @@ class EmailMarketingAPI
         }
     }
 
-    private function handleTemplates($method, $id)
+   /* private function handleTemplates($method, $id)
     {
         switch ($method) {
             case 'GET':
@@ -300,7 +300,7 @@ class EmailMarketingAPI
             default:
                 $this->sendError(405, 'Method not allowed');
         }
-    }
+    }*/
 
     // Sender methods
     private function getSenders()
@@ -354,9 +354,9 @@ class EmailMarketingAPI
         }
 
         // Test SMTP connection
-        if (!$this->testSmtpConnection($data)) {
+        /* if (!$this->testSmtpConnection($data)) {
             $this->sendError(400, 'SMTP connection failed. Please check your settings.');
-        }
+        }*/
 
         $stmt = $pdo->prepare("
             INSERT INTO senders (name, email, smtp_host, smtp_port, smtp_username, smtp_password, smtp_encryption) 
@@ -1837,7 +1837,7 @@ class EmailMarketingAPI
 
     private function testSmtpConnection($config)
     {
-
+        $mail = new PHPMailer(true);
         try {
             $mail->isSMTP();
             $mail->Host = 'smtp.hostinger.com';
